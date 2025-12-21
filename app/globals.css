@@ -1,15 +1,16 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
+  --background: #f8f8f8;
+  /* --background: #ffffff; */
   --foreground: #171717;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-noto-sans-kr);
+  /* --font-mono: var(--font-geist-mono); */
 
   /* Primary */
   --color-primary-50: #fff3ee;
@@ -60,4 +61,108 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+/* --- Animation Classes --- */
+.rotate {
+  animation: rotate 3s infinite linear;
+}
+
+.pulse {
+  animation: pulse 2s infinite;
+}
+
+.slideIn {
+  animation: slideIn 0.5s ease-out forwards;
+}
+
+/* 한 줄 높이만 보이게 하는 컨테이너 */
+.tip-rotator {
+  display: inline-block;
+  overflow: hidden;
+  height: 1.5em; /* 한 줄 높이만큼만 보이도록 */
+}
+
+/* 실제로 위로 슬라이드되는 영역 */
+.tip-rotator-inner {
+  display: flex;
+  flex-direction: column;
+  animation: tipSlideBounce 8s infinite ease-out;
+}
+
+.tip-rotator-inner span {
+  display: block;
+  height: 1.5em;
+  line-height: 1.5em; /* 컨테이너와 동일한 높이로 맞추기 */
+}
+
+/* --- Keyframes 정의 --- */
+
+/* 회전 애니메이션 */
+@keyframes rotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.07);
+  }
+}
+
+@keyframes slideIn {
+  0% {
+    opacity: 0;
+    transform: translateX(100px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* 첫 줄 ↔ 두 번째 줄을 오버슈트(bounce) 느낌으로 슬라이드 */
+@keyframes tipSlideBounce {
+  /* 0~35%: 1번 문구 그대로 */
+  0%,
+  30% {
+    transform: translateY(0%);
+  }
+
+  /* 35~45%: 1번이 위로 사라지며, 2번이 튕기듯 등장 */
+  30% {
+    transform: translateY(-115%); /* 조금 더 위로 오버슈트 */
+  }
+
+  30%,
+  60% {
+    transform: translateY(-100%); /* 2번 문구 제자리 */
+  }
+
+  /* 45~80%: 2번 문구 그대로 */
+  60%,
+  80% {
+    transform: translateY(-100%);
+  }
+
+  /* 80~95%: 2번이 아래로 빠지고, 1번이 튕기듯 다시 등장 */
+  80% {
+    transform: translateY(15%); /* 아래쪽 오버슈트 */
+  }
+  95% {
+    transform: translateY(0%); /* 1번 문구 제자리 */
+  }
+
+  /* 95~100%: 1번 고정(다음 사이클 준비) */
+  100% {
+    transform: translateY(0%);
+  }
 }
