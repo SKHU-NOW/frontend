@@ -1,20 +1,46 @@
 "use client";
 
+import ConfirmModal from "@/app/components/ui/Modal";
+import { communityService } from "@/app/lib/api/community";
 import Image from "next/image";
+import { useState } from "react";
 
 type Props = {
+  communityId: number; // ✅ 추가
   title: string;
   term: string;
   manager: string;
   starIconSrc: any;
+  onDeleted?: () => void; // ✅ 추가 (삭제 후 라우팅 등)
 };
 
 export default function CommunityInfoCard({
+  communityId,
   title,
   term,
   manager,
   starIconSrc,
+  onDeleted,
 }: Props) {
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+
+  const handleConfirmDelete = async () => {
+    if (!Number.isFinite(communityId)) return;
+
+    try {
+      setIsDeleting(true);
+      await communityService.deleteCommunity(communityId);
+
+      setConfirmOpen(false);
+      onDeleted?.();
+    } catch (e: any) {
+      alert(e?.message ?? "커뮤니티 삭제에 실패했습니다.");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   return (
     <div className="relative rounded-xl border border-gray-200 bg-white p-8 shadow-sm">
       <button
@@ -34,11 +60,30 @@ export default function CommunityInfoCard({
 
         <button
           type="button"
+          onClick={() => setConfirmOpen(true)}
+          disabled={isDeleting}
           className="mt-8 h-11 w-28 rounded-md bg-secondary-400 text-white font-semibold hover:bg-secondary-500 transition-colors"
         >
-          삭제
+          {isDeleting ? "삭제 중..." : "삭제"}
         </button>
       </div>
+
+      {/* ✅ 확인 모달 */}
+      <ConfirmModal
+        isOpen={confirmOpen}
+        message="커뮤니티를 삭제하겠습니까?"
+        confirmText={isDeleting ? "삭제 중..." : "삭제"}
+        cancelText="취소"
+        confirmVariant="danger"
+        onCancel={() => {
+          if (isDeleting) return;
+          setConfirmOpen(false);
+        }}
+        onConfirm={() => {
+          if (isDeleting) return;
+          handleConfirmDelete();
+        }}
+      />
     </div>
   );
 }

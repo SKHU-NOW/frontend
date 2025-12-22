@@ -1,68 +1,45 @@
 "use client";
 
 import clsx from "clsx";
-import type { PostCategory } from "../types/article";
+import type { PostCategory, PostCategoryFilter } from "../types/article";
 import { categoryLabelText, categoryStyle } from "../types/article";
 
-type Props = {
-  value: PostCategory;
-  onChange: (v: PostCategory) => void;
-};
+type Props =
+  | {
+      showAll: true;
+      value: PostCategoryFilter;
+      onChange: (v: PostCategoryFilter) => void;
+    }
+  | {
+      showAll?: false; // 기본 false
+      value: PostCategory;
+      onChange: (v: PostCategory) => void;
+    };
 
-const tabs: PostCategory[] = ["ALL", "NOTICE", "QUESTION", "GENERAL"];
+export default function ArticleCategoryTabs(props: Props) {
+  const showAll = props.showAll ?? false;
 
-const categoryStyleMap = {
-  NOTICE: {
-    border: "border-primary-500",
-    text: "text-primary-500",
-    bg: "bg-primary-500",
-  },
-  QUESTION: {
-    border: "border-yellow-400",
-    text: "text-yellow-500",
-    bg: "bg-yellow-400",
-  },
-  GENERAL: {
-    border: "border-green-500",
-    text: "text-green-500",
-    bg: "bg-green-500",
-  },
-} as const;
+  const tabs = (
+    showAll
+      ? (["ALL", "NOTICE", "QUESTION", "NORMAL"] as const)
+      : (["NOTICE", "QUESTION", "NORMAL"] as const)
+  ) as readonly (PostCategoryFilter | PostCategory)[];
 
-export default function ArticleCategoryTabs({ value, onChange }: Props) {
   return (
     <div className="flex items-center gap-3">
       {tabs.map((tab) => {
-        const isActive = value === tab;
+        const isActive = props.value === tab;
+
+        const st = categoryStyle[tab as PostCategory];
 
         const base =
           "h-8 rounded-full px-3 text-sm font-semibold transition-colors border-2 shadow-[0px_4px_4px_0px_rgba(0,0,0,0.05)]";
-
-        if (tab === "ALL") {
-          return (
-            <button
-              key={tab}
-              type="button"
-              onClick={() => onChange(tab)}
-              className={clsx(
-                base,
-                isActive
-                  ? "bg-gray-700 text-white border-gray-700"
-                  : "text-gray-700 border-gray-500 hover:bg-gray-50"
-              )}
-            >
-              {categoryLabelText[tab]}
-            </button>
-          );
-        }
-
-        const st = categoryStyle[tab];
 
         return (
           <button
             key={tab}
             type="button"
-            onClick={() => onChange(tab)}
+            onClick={() => (props as any).onChange(tab)}
             className={clsx(
               base,
               isActive

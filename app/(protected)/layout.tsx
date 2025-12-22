@@ -1,9 +1,9 @@
 import Footer from "./components/Footer";
-import Header from "./components/Header";
 import Sidebar, { SidebarItem } from "./components/SideBar";
 import userIcon from "../assets/profile.svg";
 import menuIcon from "../assets/commulist.svg";
 import ProtectedGate from "./components/ProtectedGate";
+import HeaderShell from "./components/HeaderShell";
 
 export default function ProtectedLayout({
   children,
@@ -18,7 +18,7 @@ export default function ProtectedLayout({
   return (
     <ProtectedGate>
       <div className="min-h-screen">
-        <Header />
+        <HeaderShell />
         <div className="flex w-full">
           <Sidebar items={items} className="sticky h-[calc(100vh=10px)]" />
 

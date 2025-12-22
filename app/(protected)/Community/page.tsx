@@ -6,10 +6,15 @@ import CommunityCard, { Community } from "../components/CommunityCard";
 import { useRouter } from "next/navigation";
 import Button from "@/app/components/ui/Button";
 import CreateCommunityModal from "../components/CreateCommunityModal";
+import { CommunityDto, communityService } from "@/app/lib/api/community";
 
 export default function CommunityPage() {
   const [keyword, setKeyword] = useState("");
   const [open, setOpen] = useState(false);
+
+  const [rows, setRows] = useState<CommunityDto[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const router = useRouter();
 
@@ -29,16 +34,41 @@ export default function CommunityPage() {
     return () => document.removeEventListener("mousedown", onDocMouseDown);
   }, [open]);
 
-  // 임시 데이터 (나중에 API로 교체)
-  const communities: Community[] = useMemo(
-    () =>
-      Array.from({ length: 10 }).map((_, i) => ({
-        id: String(i + 1),
-        title: "영어단어외2:알맹이와 껍데기 / 2025 - 2학기 / 전공선택",
-        isStarred: false,
-      })),
-    []
-  );
+  useEffect(() => {
+    let mounted = true;
+
+    const run = async () => {
+      try {
+        setLoading(true);
+        setErrorMsg(null);
+
+        const data = await communityService.getMyCommunities();
+        if (!mounted) return;
+
+        setRows(data);
+      } catch (e: any) {
+        if (!mounted) return;
+        setErrorMsg(e?.message ?? "커뮤니티 목록을 불러오지 못했습니다.");
+        setRows([]);
+      } finally {
+        if (!mounted) return;
+        setLoading(false);
+      }
+    };
+
+    run();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const communities: Community[] = useMemo(() => {
+    return rows.map((c) => ({
+      id: String(c.id),
+      title: `${c.name} / ${c.year} - ${c.semester}학기`,
+      isStarred: false, // 즐겨찾기 API 붙이기 전까지 임시
+    }));
+  }, [rows]);
 
   const filtered = useMemo(() => {
     const q = keyword.trim();
@@ -70,28 +100,41 @@ export default function CommunityPage() {
               커뮤니티 생성
             </Button>
 
-            <CreateCommunityModal open={open} onClose={() => setOpen(false)} />
+            <CreateCommunityModal
+              open={open}
+              onClose={() => setOpen(false)}
+              onCreated={(id) => {
+                router.push(`/Community/${id}/Article`);
+              }}
+            />
           </div>
         </div>
 
+        {/* 상태 표시 */}
+        {loading && (
+          <div className="mt-6 text-sm text-gray-500">불러오는 중...</div>
+        )}
+        {!loading && errorMsg && (
+          <div className="mt-6 text-sm text-red-500">{errorMsg}</div>
+        )}
+
         {/* 리스트 */}
-        <div className="mt-6 space-y-4">
-          {filtered.map((community) => (
-            <CommunityCard
-              key={community.id}
-              community={community}
-              onClick={() => {
-                // TODO: 커뮤니티 상세로 이동 (나중에 router.push)
-                router.push(`/Community/${community.id}/Article`);
-                console.log("open", community.id);
-              }}
-              onToggleStar={() => {
-                // TODO: 즐겨찾기 토글 (나중에 상태/서버 연동)
-                console.log("toggle star", community.id);
-              }}
-            />
-          ))}
-        </div>
+        {!loading && !errorMsg && (
+          <div className="mt-6 space-y-4">
+            {filtered.map((community) => (
+              <CommunityCard
+                key={community.id}
+                community={community}
+                onClick={() => {
+                  router.push(`/Community/${community.id}/Article`);
+                }}
+                onToggleStar={() => {
+                  console.log("toggle star", community.id);
+                }}
+              />
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

@@ -12,16 +12,16 @@ export default function Header() {
 
   return (
     <header className="sticky top-0 z-50 shadow-[0px_2px_4px_0px_rgba(0,0,0,0.10)] bg-white">
-      <div className="flex h-[100px] items-center justify-between pl-7 pr-13">
+      <div className="flex h-20 items-center justify-between pl-7 pr-13">
         {/* 로고 텍스트 */}
         <Link href="/">
-          <Image src={skhu} alt="skhu-link" />
+          <Image src={skhu} alt="skhu-link" width={300} height={300} />
         </Link>
 
         {/* 오른쪽 영역 */}
         {isLoading ? null : isAuthenticated ? (
           <Link href="/Community">
-            <Image src={community} alt="community" width={50} height={50} />
+            <Image src={community} alt="community" width={40} height={40} />
           </Link>
         ) : (
           <Button

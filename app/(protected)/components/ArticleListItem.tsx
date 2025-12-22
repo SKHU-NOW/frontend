@@ -1,7 +1,7 @@
 "use client";
 
 import clsx from "clsx";
-import type { Post } from "../types/article";
+import type { Post, PostCategory } from "../types/article";
 import { categoryStyle } from "../types/article";
 import Image from "next/image";
 import menu from "../../assets/icon_menu.svg";
@@ -10,12 +10,14 @@ import ArticleActionMenu from "./ActionMenu";
 import clickMenu from "../../assets/menu_clicked.svg";
 import comment from "../../assets/icon_comment.svg";
 import like from "../../assets/like_empty.svg";
+import { PostSummary } from "./ArticleList";
 
 type Props = {
-  post: Post;
+  post: PostSummary;
   variant?: "owner" | "other";
-  onEdit?: (postId: string) => void;
-  onDelete?: (postId: string) => void;
+  onEdit?: (postId: number) => void;
+  onDelete?: (postId: number) => void;
+  onClick?: () => void;
 };
 
 export default function ArticleListItem({
@@ -23,13 +25,16 @@ export default function ArticleListItem({
   variant = "owner",
   onEdit,
   onDelete,
+  onClick,
 }: Props) {
   const [menuOpen, setMenuOpen] = useState(false);
-  const st = categoryStyle[post.category];
+
+  const key = (post.category ?? "ALL") as PostCategory;
+  const st = categoryStyle[key] ?? categoryStyle.ALL;
 
   return (
     <div
-      // onClick={onClick}
+      onClick={onClick}
       className="relative flex items-center justify-between rounded-md border border-gray-300 bg-white px-5 py-1.5
                  cursor-pointer hover:bg-gray-50 transition-colors"
     >
@@ -49,12 +54,18 @@ export default function ArticleListItem({
       </div>
 
       <div className="flex items-center gap-2">
-        <button type="button">
+        <button type="button" className="flex items-center gap-1">
           <Image src={comment} alt="댓글" />
+          <span className="text-sm font-semibold text-gray-700">
+            {post.commentCount}
+          </span>
         </button>
 
-        <button type="button">
+        <button type="button" className="flex items-center gap-1">
           <Image src={like} alt="좋아요" />
+          <span className="text-sm font-semibold text-gray-700">
+            {post.likeCount}
+          </span>
         </button>
 
         {/* 오른쪽 ... 버튼 자리(지금은 UI만) */}

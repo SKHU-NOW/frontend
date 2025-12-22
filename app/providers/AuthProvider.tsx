@@ -12,11 +12,15 @@ import { authService } from "../lib/api/authService";
 import { getAccessToken, getRefreshToken } from "../lib/api/fetchClient";
 
 import { api, setTokens, clearTokens } from "../lib/api/fetchClient";
+import { MyProfile, userService } from "../lib/api/userService";
 
 type AuthContextValue = {
   isLoading: boolean;
   isAuthenticated: boolean;
+  user: MyProfile | null;
   login: () => void;
+  logout: () => void;
+  refreshMe: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -33,7 +37,16 @@ export default function AuthProvider({
   children: React.ReactNode;
 }) {
   const [isLoading, setIsLoading] = useState(true);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [user, setUser] = useState<MyProfile | null>(null);
+
+  const isAuthenticated = !!user;
+
+  const refreshMe = async () => {
+    // accessToken이 유효하면 /auth/me 성공
+    // 만료면 fetchClient가 401 -> refresh -> 재시도까지 알아서 함
+    const me = await userService.getMe();
+    setUser(me);
+  };
 
   // 초기 진입 시: accessToken 있으면 로그인 상태로 보고,
   // 없으면 refreshToken 있으면 refresh 시도해서 복구
@@ -42,7 +55,7 @@ export default function AuthProvider({
       try {
         const access = getAccessToken();
         if (access) {
-          setIsAuthenticated(true);
+          await refreshMe();
           return;
         }
 
@@ -54,15 +67,15 @@ export default function AuthProvider({
             refreshToken: string;
           }>("/auth/refresh", { refreshToken: refresh }, { auth: false });
           setTokens(tokens);
-          setIsAuthenticated(true);
+          await refreshMe();
           return;
         }
 
         // 3) 둘 다 없으면 비로그인
-        setIsAuthenticated(false);
-      } catch {
+        setUser(null);
+      } catch (e) {
         clearTokens();
-        setIsAuthenticated(false);
+        setUser(null);
       } finally {
         setIsLoading(false);
       }
@@ -75,9 +88,15 @@ export default function AuthProvider({
     () => ({
       isLoading,
       isAuthenticated,
+      user,
       login: () => authService.startMicrosoftLogin(),
+      logout: () => {
+        clearTokens();
+        setUser(null);
+      },
+      refreshMe,
     }),
-    [isLoading, isAuthenticated]
+    [isLoading, isAuthenticated, user]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

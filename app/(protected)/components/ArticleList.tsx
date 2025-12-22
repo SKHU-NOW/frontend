@@ -1,31 +1,57 @@
 "use client";
 
 import Image from "next/image";
-import type { Post, PostCategory } from "../types/article";
-import { useState } from "react";
+import type { Post, PostCategory, PostCategoryFilter } from "../types/article";
+import { useMemo, useState } from "react";
 import CommunitySearchBar from "./Search";
 import ArticleCategoryTabs from "./ArticleCategoryTabs";
 import ArticleListItem from "./ArticleListItem";
 
-type Props = {
-  posts: Post[];
-  writeIcon: any;
-  onClickWrite?: () => void;
+/** 목록에서 필요한 최소 필드 */
+export type PostSummary = {
+  id: number;
+  title: string;
+  author: string;
+  createdAt: string;
+
+  category: PostCategory | string;
+
+  viewCount: number;
+  likeCount: number;
+  commentCount: number;
+
+  pinned?: boolean;
 };
 
-export default function ArticleList({ posts, writeIcon, onClickWrite }: Props) {
+type Props = {
+  posts: PostSummary[];
+  writeIcon: any;
+  isLoading?: boolean;
+  onClickWrite?: () => void;
+  onClickPost?: (id: number) => void;
+};
+
+export default function ArticleList({
+  posts,
+  writeIcon,
+  isLoading,
+  onClickWrite,
+  onClickPost,
+}: Props) {
   const [keyword, setKeyword] = useState("");
-  const [category, setCategory] = useState<PostCategory>("ALL");
+  const [category, setCategory] = useState<PostCategoryFilter>("ALL");
 
   const q = keyword.trim();
 
-  const filtered = posts.filter((p) => {
-    const matchCategory = category === "ALL" ? true : p.category === category;
-    const matchKeyword = !q
-      ? true
-      : p.title.includes(q) || p.author.includes(q);
-    return matchCategory && matchKeyword;
-  });
+  const filtered = useMemo(() => {
+    return posts.filter((p) => {
+      const matchCategory = category === "ALL" ? true : p.category === category;
+      const matchKeyword = !q
+        ? true
+        : p.title.includes(q) || p.author.includes(q);
+      return matchCategory && matchKeyword;
+    });
+  }, [posts, category, q]);
 
   return (
     <section className="rounded-xl border border-gray-200 bg-white p-8 shadow-sm">
@@ -47,15 +73,34 @@ export default function ArticleList({ posts, writeIcon, onClickWrite }: Props) {
 
       {/* 탭 */}
       <div className="mt-4">
-        <ArticleCategoryTabs value={category} onChange={setCategory} />
+        <ArticleCategoryTabs value={category} onChange={setCategory} showAll />
       </div>
 
+      {/* 로딩 */}
+      {isLoading && (
+        <div className="mt-6 text-sm font-semibold text-gray-500">
+          불러오는 중...
+        </div>
+      )}
+
       {/* 리스트 */}
-      <div className="mt-6 space-y-4">
-        {filtered.map((post) => (
-          <ArticleListItem key={post.id} post={post} />
-        ))}
-      </div>
+      {!isLoading && (
+        <div className="mt-6 space-y-4">
+          {filtered.map((post) => (
+            <ArticleListItem
+              key={post.id}
+              post={post as any}
+              onClick={() => onClickPost?.(post.id)}
+            />
+          ))}
+
+          {filtered.length === 0 && (
+            <div className="py-10 text-center text-sm font-semibold text-gray-500">
+              게시글이 없습니다.
+            </div>
+          )}
+        </div>
+      )}
     </section>
   );
 }

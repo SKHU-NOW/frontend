@@ -84,6 +84,25 @@ type RequestOptions = Omit<RequestInit, "body"> & {
   auth?: boolean; // default true
 };
 
+function isEnvelope<T>(v: any): v is ApiEnvelope<T> {
+  return (
+    v &&
+    typeof v === "object" &&
+    typeof (v as any).success === "boolean" &&
+    "data" in v
+  );
+}
+
+async function parseJsonSafe(res: Response) {
+  const text = await res.text().catch(() => "");
+  if (!text) return null;
+  try {
+    return JSON.parse(text);
+  } catch {
+    return text; // 혹시 JSON 아닌 문자열일 수도 있어서
+  }
+}
+
 async function request<T>(
   path: string,
   options: RequestOptions = {}
@@ -92,23 +111,27 @@ async function request<T>(
 
   const accessToken = auth ? getAccessToken() : null;
 
-  const res = await fetch(`${API_BASE}${path}`, {
-    ...rest,
-    headers: {
-      ...(body instanceof FormData
-        ? {}
-        : { "Content-Type": "application/json" }),
-      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
-      ...(headers ?? {}),
-    },
-    body:
-      body == null
-        ? undefined
-        : body instanceof FormData
-        ? body
-        : JSON.stringify(body),
-    credentials: "include",
-  });
+  const doFetch = async (token?: string | null) => {
+    return fetch(`${API_BASE}${path}`, {
+      ...rest,
+      headers: {
+        ...(body instanceof FormData
+          ? {}
+          : { "Content-Type": "application/json" }),
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...(headers ?? {}),
+      },
+      body:
+        body == null
+          ? undefined
+          : body instanceof FormData
+          ? body
+          : JSON.stringify(body),
+      credentials: "include",
+    });
+  };
+
+  const res = await doFetch(accessToken);
 
   // 302(리다이렉트)로 로그인 보내는 서버라면, fetch는 redirected로 표시될 수 있음
   if (res.redirected) {
@@ -122,51 +145,47 @@ async function request<T>(
       await getOrRefreshTokens();
       // 새 accessToken으로 재시도
       const retryAccess = getAccessToken();
-      const retry = await fetch(`${API_BASE}${path}`, {
-        ...rest,
-        headers: {
-          ...(body instanceof FormData
-            ? {}
-            : { "Content-Type": "application/json" }),
-          ...(retryAccess ? { Authorization: `Bearer ${retryAccess}` } : {}),
-          ...(headers ?? {}),
-        },
-        body:
-          body == null
-            ? undefined
-            : body instanceof FormData
-            ? body
-            : JSON.stringify(body),
-        credentials: "include",
-      });
+      const retry = await doFetch(retryAccess);
 
       if (retry.redirected) throw new Error("Retry redirected");
       if (!retry.ok) {
-        const text = await retry.text().catch(() => "");
-        throw new Error(`Retry failed: ${retry.status} ${text}`);
+        const errBody = await parseJsonSafe(retry);
+        throw new Error(
+          typeof errBody === "string"
+            ? `HTTP ${retry.status}: ${errBody}`
+            : `HTTP ${retry.status}: ${JSON.stringify(errBody)}`
+        );
       }
 
-      const json = (await retry.json()) as ApiEnvelope<T>;
-      if (!json.success) throw new Error(json.message ?? "API failed");
-      return json.data;
+      const parsed = await parseJsonSafe(retry);
+      if (isEnvelope<T>(parsed)) {
+        if (!parsed.success) throw new Error(parsed.message ?? "API failed");
+        return parsed.data;
+      }
+      return parsed as T; // raw 응답 지원
     } catch (e) {
-      // refresh 실패 → 토큰 정리
       clearTokens();
       throw e;
     }
   }
 
   if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(`HTTP ${res.status}: ${text}`);
+    const errBody = await parseJsonSafe(res);
+    throw new Error(
+      typeof errBody === "string"
+        ? `HTTP ${res.status}: ${errBody}`
+        : `HTTP ${res.status}: ${JSON.stringify(errBody)}`
+    );
   }
 
-  // 서버가 항상 {success,data,message} 형태라고 가정
-  const json = (await res.json()) as ApiEnvelope<T>;
-  if (!json.success) {
-    throw new Error(json.message ?? "API failed");
+  const parsed = await parseJsonSafe(res);
+
+  // Envelope면 data 반환 / 아니면 raw 그대로 반환
+  if (isEnvelope<T>(parsed)) {
+    if (!parsed.success) throw new Error(parsed.message ?? "API failed");
+    return parsed.data;
   }
-  return json.data;
+  return parsed as T;
 }
 
 /** ---- public helpers ---- */
