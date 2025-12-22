@@ -14,7 +14,7 @@ export default function Footer() {
         <div className=" text-gray-700">
           <div>
             <span>오늘의 메모는 하루가 지나면 자동으로 리셋!</span>
-            <span>메모는 1인 당 기본 5장 지급됩니다. (하루 기준)</span>
+            {/* <span>메모는 1인 당 기본 5장 지급됩니다. (하루 기준)</span> */}
           </div>
         </div>
       </div>

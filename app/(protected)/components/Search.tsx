@@ -5,7 +5,7 @@ import search from "../../assets/search.svg";
 
 type Props = {
   value: string;
-  onChange: (v: string) => void;
+  onChange: (v: any) => void;
   placeholder?: string;
   className?: string;
 };
