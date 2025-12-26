@@ -113,9 +113,8 @@ export default function ProfilePopover({
       <div className="mt-8 flex justify-center">
         <ButtonBlue
           className="h-12 w-[180px] rounded-lg text-base"
-          onClick={() => {
-            onLogout?.();
-            console.log("logout");
+          onClick={async () => {
+            await onLogout?.();
             onClose();
           }}
         >

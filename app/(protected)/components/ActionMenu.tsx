@@ -4,15 +4,16 @@ type Props = {
   isOpen: boolean;
   onEdit?: () => void;
   onDelete?: () => void;
+  onReport?: () => void; // ✅ 추가
   onClose: () => void;
-  // 지금은 "내 글" 케이스: 수정/삭제만
-  variant?: "owner" | "other"; // 나중에 other는 신고만 보여주기 용
+  variant?: "owner" | "other";
 };
 
 export default function ArticleActionMenu({
   isOpen,
   onEdit,
   onDelete,
+  onReport,
   onClose,
   variant = "owner",
 }: Props) {
@@ -26,18 +27,25 @@ export default function ArticleActionMenu({
       <button
         type="button"
         aria-label="close menu overlay"
-        onClick={onClose}
+        onClick={(e) => {
+          e.stopPropagation(); // ✅ 카드 클릭 방지
+          onClose();
+        }}
         className="fixed inset-0 z-60 cursor-default bg-transparent"
       />
 
       {/* ✅ 메뉴 본체 */}
-      <div className="absolute z-70 right-[-72px] top-[8px]">
+      <div
+        className="absolute z-70 right-[-72px] top-2"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="w-[62px] overflow-hidden rounded-2xl border border-gray-500 bg-white shadow-lg">
-          {isOwner && (
+          {isOwner ? (
             <>
               <button
                 type="button"
-                onClick={() => {
+                onClick={(e) => {
+                  e.stopPropagation();
                   onEdit?.();
                   onClose();
                 }}
@@ -48,7 +56,8 @@ export default function ArticleActionMenu({
               <div className="h-[0.5px] w-full bg-gray-500" />
               <button
                 type="button"
-                onClick={() => {
+                onClick={(e) => {
+                  e.stopPropagation();
                   onDelete?.();
                   onClose();
                 }}
@@ -57,14 +66,12 @@ export default function ArticleActionMenu({
                 삭제
               </button>
             </>
-          )}
-
-          {/* 나중에 다른 유저 글이면 신고만 */}
-          {!isOwner && (
+          ) : (
             <button
               type="button"
-              onClick={() => {
-                // onReport?.();
+              onClick={(e) => {
+                e.stopPropagation();
+                onReport?.();
                 onClose();
               }}
               className="h-12 w-full text-[16px] font-semibold text-orange-500 hover:bg-gray-50"

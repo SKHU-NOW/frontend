@@ -1,13 +1,13 @@
 "use client";
 
-import { useMemo } from "react";
 import Image from "next/image";
 
-import heartIcon from "../../assets/like_empty.svg";
+import heartEmpty from "../../assets/like_empty.svg";
+import heartFull from "../../assets/like_full.svg";
 import ArticleComments, { Comment } from "./ArticleComments";
 
 export type ArticleDetail = {
-  id: string;
+  id: number;
   title: string;
   content: string;
 
@@ -21,6 +21,7 @@ export type ArticleDetail = {
 
   commentCount: number;
   comments: Comment[];
+  commentSLoading?: boolean;
 };
 
 type Props = {
@@ -29,7 +30,9 @@ type Props = {
 
   onToggleLike?: () => void;
   onSubmitComment?: (content: string) => void;
-  onSubmitReply?: (commentId: string, content: string) => void;
+
+  currentUserId: number; // ✅ 추가
+  onRefreshComments?: () => Promise<void> | void; // ✅ 추가
 };
 
 export default function ArticleListDetail({
@@ -37,8 +40,11 @@ export default function ArticleListDetail({
   onBack,
   onToggleLike,
   onSubmitComment,
-  onSubmitReply,
+  currentUserId,
+  onRefreshComments,
 }: Props) {
+  const heartIcon = article.isLiked ? heartFull : heartEmpty;
+
   return (
     <div className="rounded-[14px] border border-gray-200 bg-white p-6">
       {/* 상단: 목록으로 */}
@@ -50,7 +56,6 @@ export default function ArticleListDetail({
             inline-flex items-center gap-2
             rounded-md px-2
             text-sm font-semibold text-gray-700
-            hover:bg-gray-100
           "
         >
           <span className="text-3xl leading-none mb-2">‹</span>
@@ -112,8 +117,10 @@ export default function ArticleListDetail({
       <ArticleComments
         commentCount={article.commentCount}
         comments={article.comments}
+        isLoading={article.commentSLoading}
+        currentUserId={currentUserId}
         onSubmitComment={onSubmitComment}
-        onSubmitReply={onSubmitReply}
+        onRefreshComments={onRefreshComments}
       />
     </div>
   );

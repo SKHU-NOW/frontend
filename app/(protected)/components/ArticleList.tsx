@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import type { Post, PostCategory, PostCategoryFilter } from "../types/article";
+import type { PostCategory, PostCategoryFilter } from "../types/article";
 import { useMemo, useState } from "react";
 import CommunitySearchBar from "./Search";
 import ArticleCategoryTabs from "./ArticleCategoryTabs";
@@ -12,6 +12,7 @@ export type PostSummary = {
   id: number;
   title: string;
   author: string;
+  authorId: number; // ✅ 추가 (내 글/남 글 판별)
   createdAt: string;
 
   category: PostCategory | string;
@@ -21,22 +22,43 @@ export type PostSummary = {
   commentCount: number;
 
   pinned?: boolean;
+
+  isLiked?: boolean;
 };
 
 type Props = {
   posts: PostSummary[];
   writeIcon: any;
   isLoading?: boolean;
+
+  currentUserId: number; // ✅ 추가
+
+  canPin: boolean; // ✅ 추가
+  onTogglePin?: (id: number) => void; // ✅ 추가
+
   onClickWrite?: () => void;
   onClickPost?: (id: number) => void;
+
+  onEdit?: (id: number) => void; // ✅ 추가
+  onDelete?: (id: number) => void; // ✅ 추가
+  onReport?: (id: number) => void; // ✅ 추가
+
+  onToggleLike?: (id: number) => void;
 };
 
 export default function ArticleList({
   posts,
   writeIcon,
   isLoading,
+  currentUserId,
+  canPin,
+  onTogglePin,
   onClickWrite,
   onClickPost,
+  onEdit,
+  onDelete,
+  onReport,
+  onToggleLike,
 }: Props) {
   const [keyword, setKeyword] = useState("");
   const [category, setCategory] = useState<PostCategoryFilter>("ALL");
@@ -58,7 +80,10 @@ export default function ArticleList({
       {/* 상단: Search + 글쓰기 버튼 */}
       <div className="flex items-center gap-1">
         <div className="flex-1">
-          <CommunitySearchBar value={keyword} onChange={setKeyword} />
+          <CommunitySearchBar
+            value={keyword}
+            onChange={(e: any) => setKeyword(e.target.value)}
+          />
         </div>
 
         <button
@@ -89,8 +114,15 @@ export default function ArticleList({
           {filtered.map((post) => (
             <ArticleListItem
               key={post.id}
-              post={post as any}
+              post={post}
+              currentUserId={currentUserId}
+              canPin={canPin} // ✅ 추가
+              onTogglePin={(id) => onTogglePin?.(id)}
               onClick={() => onClickPost?.(post.id)}
+              onEdit={(id) => onEdit?.(id)}
+              onDelete={(id) => onDelete?.(id)}
+              onReport={(id) => onReport?.(id)}
+              onToggleLike={(id) => onToggleLike?.(id)}
             />
           ))}
 

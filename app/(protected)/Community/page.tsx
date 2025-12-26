@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import CommunitySearchBar from "../components/Search";
 import CommunityCard, { Community } from "../components/CommunityCard";
 import { useRouter } from "next/navigation";
@@ -34,39 +34,40 @@ export default function CommunityPage() {
     return () => document.removeEventListener("mousedown", onDocMouseDown);
   }, [open]);
 
-  useEffect(() => {
+  const fetchMyCommunities = useCallback(async () => {
     let mounted = true;
 
-    const run = async () => {
-      try {
-        setLoading(true);
-        setErrorMsg(null);
+    try {
+      setLoading(true);
+      setErrorMsg(null);
 
-        const data = await communityService.getMyCommunities();
-        if (!mounted) return;
+      const data = await communityService.getMyCommunities();
+      if (!mounted) return;
 
-        setRows(data);
-      } catch (e: any) {
-        if (!mounted) return;
-        setErrorMsg(e?.message ?? "커뮤니티 목록을 불러오지 못했습니다.");
-        setRows([]);
-      } finally {
-        if (!mounted) return;
-        setLoading(false);
-      }
-    };
+      setRows(data);
+    } catch (e: any) {
+      if (!mounted) return;
+      setErrorMsg(e?.message ?? "커뮤니티 목록을 불러오지 못했습니다.");
+      setRows([]);
+    } finally {
+      if (!mounted) return;
+      setLoading(false);
+    }
 
-    run();
     return () => {
       mounted = false;
     };
   }, []);
 
+  useEffect(() => {
+    fetchMyCommunities();
+  }, [fetchMyCommunities]);
+
   const communities: Community[] = useMemo(() => {
     return rows.map((c) => ({
       id: String(c.id),
       title: `${c.name} / ${c.year} - ${c.semester}학기`,
-      isStarred: false, // 즐겨찾기 API 붙이기 전까지 임시
+      isStarred: !!c.communityMembershipResponse?.pinned,
     }));
   }, [rows]);
 
@@ -75,6 +76,54 @@ export default function CommunityPage() {
     if (!q) return communities;
     return communities.filter((c) => c.title.includes(q));
   }, [keyword, communities]);
+
+  const handleToggleStar = useCallback(
+    async (communityIdStr: string) => {
+      const communityId = Number(communityIdStr);
+      if (!Number.isFinite(communityId)) return;
+
+      // 1) optimistic
+      setRows((prev) =>
+        prev.map((c) => {
+          if (c.id !== communityId) return c;
+          const prevPinned = !!c.communityMembershipResponse?.pinned;
+
+          // 멤버십이 없을 수도 있으니 안전하게 생성
+          const nextMembership = {
+            ...(c.communityMembershipResponse ?? {
+              id: -1,
+              role: "MEMBER",
+              joinAt: new Date().toISOString(),
+              userId: -1,
+              userNickname: "",
+              communityId,
+              banned: false,
+              pinned: false,
+            }),
+            pinned: !prevPinned,
+          };
+
+          return { ...c, communityMembershipResponse: nextMembership };
+        })
+      );
+
+      try {
+        // 2) 서버 토글 결과로 동기화(응답이 CommunityDto)
+        const updated = await communityService.toggleCommunityPinned(
+          communityId
+        );
+
+        setRows((prev) =>
+          prev.map((c) => (c.id === communityId ? updated : c))
+        );
+      } catch (e: any) {
+        // 3) 실패 시 롤백(가장 안전: 재조회)
+        await fetchMyCommunities();
+        alert(e?.message ?? "즐겨찾기 처리에 실패했습니다.");
+      }
+    },
+    [fetchMyCommunities]
+  );
 
   return (
     <div className="mx-auto py-8 pl-40 pr-30">
@@ -128,9 +177,7 @@ export default function CommunityPage() {
                 onClick={() => {
                   router.push(`/Community/${community.id}/Article`);
                 }}
-                onToggleStar={() => {
-                  console.log("toggle star", community.id);
-                }}
+                onToggleStar={() => handleToggleStar(community.id)}
               />
             ))}
           </div>

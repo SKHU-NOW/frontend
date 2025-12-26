@@ -81,11 +81,16 @@ export default function ConfirmModal({
         </div>
 
         <div className="mt-10 grid grid-cols-2 gap-3">
-          <Button type="button" onClick={onConfirm}>
+          <Button type="button" onClick={onConfirm} className="h-12">
             {confirmText}
           </Button>
 
-          <Button type="button" variant="secondary" onClick={onCancel}>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={onCancel}
+            className="h-12"
+          >
             {cancelText}
           </Button>
         </div>

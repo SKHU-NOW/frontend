@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 
 import Field from "@/app/components/ui/Field";
@@ -17,16 +17,23 @@ import {
 
 type Props = {
   communityId: number;
-  initialCategory?: CommunityPostCategory; // ✅ ALL 제거
+
+  mode: "create" | "edit"; // ✅ 추가
+  postId?: number; // ✅ edit일 때 필요
+
+  initialCategory?: CommunityPostCategory;
   onCancel: () => void;
-  onCreated: (created: CommunityPostDto) => void;
+
+  onSaved: (saved: CommunityPostDto) => void; // ✅ create/edit 공통 콜백
 };
 
 export default function ArticleCreateForm({
   communityId,
+  mode,
+  postId,
   initialCategory = "NORMAL",
   onCancel,
-  onCreated,
+  onSaved,
 }: Props) {
   const [category, setCategory] =
     useState<CommunityPostCategory>(initialCategory);
@@ -35,11 +42,51 @@ export default function ArticleCreateForm({
 
   // ✅ swagger가 multipartFile "단일"이라 1개만 보관
   const [file, setFile] = useState<File | null>(null);
+  const [existingImageUrl, setExistingImageUrl] = useState<string | null>(null);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoadingInitial, setIsLoadingInitial] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const fileRef = useRef<HTMLInputElement | null>(null);
+
+  // edit 모드면 기존 게시글 불러오기
+  useEffect(() => {
+    if (mode !== "edit") return;
+    if (!Number.isFinite(communityId)) return;
+    if (!Number.isFinite(postId)) return;
+
+    let alive = true;
+
+    (async () => {
+      setIsLoadingInitial(true);
+      setErrorMsg(null);
+
+      try {
+        const data = await articleService.getCommunityPostById(
+          communityId,
+          Number(postId)
+        );
+        if (!alive) return;
+
+        setCategory((data.category as CommunityPostCategory) || "NORMAL");
+        setTitle(data.title ?? "");
+        setContent(data.content ?? "");
+        setExistingImageUrl(data.imageUrl ?? null);
+        setFile(null);
+      } catch (e: any) {
+        if (!alive) return;
+        setErrorMsg(e?.message ?? "게시글 정보를 불러오지 못했습니다.");
+      } finally {
+        if (!alive) return;
+        setIsLoadingInitial(false);
+      }
+    })();
+
+    return () => {
+      alive = false;
+    };
+  }, [mode, communityId, postId]);
 
   const canSubmit = useMemo(() => {
     return title.trim().length > 0 && content.trim().length > 0;
@@ -61,6 +108,7 @@ export default function ArticleCreateForm({
 
   const handleSubmit = async () => {
     if (!canSubmit || isSubmitting) return;
+    if (!Number.isFinite(communityId)) return;
 
     setErrorMsg(null);
     setIsSubmitting(true);
@@ -73,14 +121,23 @@ export default function ArticleCreateForm({
         multipartFile: file ?? null, // ✅ 여기로 File 그대로
       };
 
-      const created = await articleService.createCommunityPost(
-        communityId,
-        payload
-      );
+      const saved =
+        mode === "create"
+          ? await articleService.createCommunityPost(communityId, payload)
+          : await articleService.updateCommunityPost(
+              communityId,
+              Number(postId),
+              payload
+            );
 
-      onCreated(created);
+      onSaved(saved);
     } catch (err: any) {
-      setErrorMsg(err?.message ?? "게시글 등록에 실패했습니다.");
+      setErrorMsg(
+        err?.message ??
+          (mode === "create"
+            ? "게시글 등록에 실패했습니다."
+            : "게시글 수정에 실패했습니다.")
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -96,6 +153,12 @@ export default function ArticleCreateForm({
           onChange={(v) => setCategory(v as CommunityPostCategory)}
         />
       </div>
+
+      {isLoadingInitial && (
+        <div className="mt-4 rounded-lg border border-gray-200 bg-white px-4 py-3 text-sm font-semibold text-gray-600">
+          게시글 정보를 불러오는 중...
+        </div>
+      )}
 
       {/* 제목 */}
       <div className="mt-5">
@@ -172,13 +235,31 @@ export default function ArticleCreateForm({
 
           <ButtonBlue
             onClick={handleSubmit}
-            disabled={!canSubmit || isSubmitting}
+            disabled={!canSubmit || isSubmitting || isLoadingInitial}
             className="h-10 w-20"
           >
-            {isSubmitting ? "등록중" : "등록"}
+            {isSubmitting
+              ? mode === "create"
+                ? "등록중"
+                : "수정중"
+              : mode === "create"
+              ? "등록"
+              : "수정"}
           </ButtonBlue>
         </div>
       </div>
+
+      {/* 기존 이미지 안내(편의) */}
+      {mode === "edit" && existingImageUrl && !file && (
+        <div className="mt-4 rounded-[10px] border border-gray-200 p-4">
+          <div className="text-sm font-extrabold text-gray-800">
+            기존 이미지
+          </div>
+          <div className="mt-2 text-sm font-semibold text-gray-700">
+            기존 이미지가 있습니다. (새 파일을 선택하면 교체됩니다)
+          </div>
+        </div>
+      )}
 
       {/* 선택된 파일 표시 */}
       {file && (

@@ -27,6 +27,13 @@ export type CreateCommunityPostPayload = {
   // communityId는 path로도 가지만, swagger에 body required로 보여서 FormData에도 같이 넣어줌
 };
 
+export type UpdateCommunityPostPayload = {
+  title: string;
+  content?: string;
+  category: CommunityPostCategory;
+  multipartFile?: File | null; // 새 파일로 교체하는 케이스
+};
+
 export const articleService = {
   /** 커뮤니티 게시글 목록 조회 (무한스크롤: lastId optional) */
   getCommunityPosts: (communityId: number, lastId?: number) => {
@@ -71,6 +78,66 @@ export const articleService = {
     return api.post<CommunityPostDto>(
       `/communities/${communityId}/posts`,
       formData,
+      { auth: true }
+    );
+  },
+
+  updateCommunityPost: (
+    communityId: number,
+    postId: number,
+    payload: UpdateCommunityPostPayload
+  ) => {
+    const formData = new FormData();
+    formData.append("title", payload.title);
+    if (payload.content != null) formData.append("content", payload.content);
+    formData.append("communityId", String(communityId));
+    formData.append("category", payload.category);
+    if (payload.multipartFile)
+      formData.append("multipartFile", payload.multipartFile);
+
+    return api.patch<CommunityPostDto>(
+      `/communities/${communityId}/posts/${postId}`,
+      formData,
+      { auth: true }
+    );
+  },
+
+  deleteCommunityPost: (communityId: number, postId: number) => {
+    return api.delete<void>(`/communities/${communityId}/posts/${postId}`, {
+      auth: true,
+    });
+  },
+
+  togglePostLike: (communityId: number, postId: number) => {
+    return api.patch<CommunityPostDto>(
+      `/communities/${communityId}/posts/${postId}/likes`,
+      undefined,
+      { auth: true }
+    );
+  },
+
+  reportPost: (params: {
+    postId: number;
+    reportedUserId: number;
+    reason?: string;
+  }) => {
+    const qs = new URLSearchParams();
+    qs.set("reportedUserId", String(params.reportedUserId));
+    if (params.reason?.trim()) qs.set("reason", params.reason.trim());
+
+    return api.post<string>(
+      `/reports/posts/${params.postId}?${qs.toString()}`,
+      undefined,
+      {
+        auth: true,
+      }
+    );
+  },
+
+  togglePostPin: (communityId: number, postId: number) => {
+    return api.patch<CommunityPostDto>(
+      `/communities/${communityId}/posts/${postId}/pin`,
+      undefined,
       { auth: true }
     );
   },

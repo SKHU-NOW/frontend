@@ -5,24 +5,30 @@ import { fileService, type CommunityResourceDto } from "@/app/lib/api/file";
 import FileListItem from "./FileListItem";
 import CommunitySearchBar from "./Search";
 import ResourceUploadModal from "./ResourceUploadModal";
+import Image from "next/image";
+import upload from "../../assets/file_upload.svg";
 
 type Props = {
   communityId: number; // ✅ 추가
+  currentUserId: number;
   items: CommunityResourceDto[];
   isLoading?: boolean;
   errorMsg?: string | null;
   onRetry?: () => void;
 
   onUploaded?: () => void; // ✅ 업로드 후 목록 재조회 용도
+  onDeleted?: () => void;
 };
 
 export default function FileList({
   communityId,
+  currentUserId,
   items,
   isLoading,
   errorMsg,
   onRetry,
   onUploaded,
+  onDeleted,
 }: Props) {
   const [keyword, setKeyword] = useState("");
   const [uploadOpen, setUploadOpen] = useState(false);
@@ -59,12 +65,8 @@ export default function FileList({
           />
         </div>
 
-        <button
-          type="button"
-          onClick={() => setUploadOpen(true)}
-          className="h-[46px] rounded-[10px] bg-secondary-400 px-5 text-sm font-extrabold text-white hover:bg-secondary-500 transition-colors"
-        >
-          자료 업로드
+        <button type="button" onClick={() => setUploadOpen(true)}>
+          <Image src={upload} alt="자료 업로드 버튼" width={45} height={45} />
         </button>
       </div>
 
@@ -100,7 +102,12 @@ export default function FileList({
         )}
 
         {filtered.map((item) => (
-          <FileListItem key={item.id} item={item} />
+          <FileListItem
+            key={item.id}
+            item={item}
+            currentUserId={currentUserId} // ✅ 추가
+            onDeleted={onDeleted} // ✅ 추가
+          />
         ))}
       </div>
 

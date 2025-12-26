@@ -122,20 +122,20 @@ export default function ResourceUploadModal({
           <div className="mt-10 flex gap-6">
             <button
               type="button"
-              onClick={handleClose}
-              disabled={isUploading}
-              className="h-14 flex-1 rounded-xl border border-secondary-400 bg-white text-lg font-extrabold text-secondary-500 hover:bg-secondary-50 disabled:opacity-60"
-            >
-              취소
-            </button>
-
-            <button
-              type="button"
               onClick={handleSubmit}
               disabled={!canSubmit}
               className="h-14 flex-1 rounded-xl bg-secondary-400 text-lg font-extrabold text-white hover:bg-secondary-500 disabled:opacity-60"
             >
               {isUploading ? "업로드 중..." : "업로드"}
+            </button>
+
+            <button
+              type="button"
+              onClick={handleClose}
+              disabled={isUploading}
+              className="h-14 flex-1 rounded-xl border border-secondary-400 bg-white text-lg font-extrabold text-secondary-500 hover:bg-secondary-50 disabled:opacity-60"
+            >
+              취소
             </button>
           </div>
         </div>

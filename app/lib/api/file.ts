@@ -1,13 +1,18 @@
-// app/lib/api/file.ts
 import { api } from "@/app/lib/api/fetchClient";
 
 export type CommunityResourceDto = {
   id: number;
   title: string;
-  fileId: string; // ✅ 실제로는 S3 URL(다운로드 링크)
+  imageUrl: string;
   uploaderId: number;
+  uploaderNickname: string;
   createdAt: string;
   updatedAt: string;
+};
+
+export type DownloadResourceResponse = {
+  resourceId: number;
+  downloadUrl: string;
 };
 
 export const fileService = {
@@ -33,5 +38,18 @@ export const fileService = {
       formData,
       { auth: true }
     );
+  },
+
+  getResourceDownloadUrl: (resourceId: number) => {
+    return api.get<DownloadResourceResponse>(
+      `/communities/${resourceId}/download`,
+      { auth: true }
+    );
+  },
+
+  deleteCommunityResource: (resourceId: number) => {
+    return api.delete<void>(`/communities/resources/${resourceId}`, {
+      auth: true,
+    });
   },
 };
