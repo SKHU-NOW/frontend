@@ -1,20 +1,31 @@
-import { api, API_BASE, getRefreshToken } from "./fetchClient";
+// app/lib/api/authService.ts
+import { API_BASE } from "./fetchClient";
+
+type LoginPrompt = "select_account" | "login" | "none";
 
 export const authService = {
-  startMicrosoftLogin: () => {
+  startMicrosoftLogin: (opts?: { prompt?: LoginPrompt; returnTo?: string }) => {
     const target =
       typeof window !== "undefined" && window.location.hostname === "localhost"
         ? "local"
         : "prod";
 
-    window.location.href = `${API_BASE}/auth/login?redirect=${target}`;
+    const prompt = opts?.prompt ?? "select_account"; // 기본값
+    const returnTo = opts?.returnTo ?? ""; // (선택) 서버가 지원하면 전달
+
+    const url = new URL(`${API_BASE}/auth/login`);
+    url.searchParams.set("redirect", target);
+
+    // 핵심: 계정 선택/재로그인 유도
+    if (prompt && prompt !== "none") url.searchParams.set("prompt", prompt);
+
+    // (선택) 서버가 returnTo를 지원하면 붙여서 보낼 수 있음
+    if (returnTo) url.searchParams.set("returnTo", returnTo);
+
+    window.location.href = url.toString();
   },
 
-  /**
-   */
-  logout: async () => {
-    const refreshToken = getRefreshToken(); // 토큰 제거 전에 확보해두면 좋음(선택)
-
+  logout: async (refreshToken?: string | null) => {
     const res = await fetch(`${API_BASE}/auth/logout`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -24,13 +35,8 @@ export const authService = {
     });
 
     if (res.type === "opaqueredirect") return;
-
-    // same-origin이면 302를 그대로 볼 수도 있음
     if (res.status >= 300 && res.status < 400) return;
 
-    // 정상 200~299만 OK
-    if (!res.ok) {
-      throw new Error(`Logout failed: ${res.status}`);
-    }
+    if (!res.ok) throw new Error(`Logout failed: ${res.status}`);
   },
 };

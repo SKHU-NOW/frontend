@@ -1,4 +1,3 @@
-// app/(protected)/components/Header.tsx
 "use client";
 
 import Image from "next/image";
@@ -10,7 +9,7 @@ import clsx from "clsx";
 export default function ProtectedHeader({
   communityId,
 }: {
-  communityId?: number; // ✅ optional로 바꿈
+  communityId?: number;
 }) {
   const pathname = usePathname();
 

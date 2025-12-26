@@ -148,13 +148,6 @@ export default function LandingPage() {
           </>
         )}
 
-        {/* 로딩 표시는 선택 */}
-        {isLoading && (
-          <div className="absolute left-80 top-70 rounded-md bg-white/80 px-3 py-2 text-sm font-semibold text-gray-700">
-            메모 불러오는 중...
-          </div>
-        )}
-
         {/* ✅ 서버 메모 렌더 */}
         {memos.map((m) => (
           <div

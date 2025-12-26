@@ -2,17 +2,17 @@
 
 import Image from "next/image";
 import type { PostCategory, PostCategoryFilter } from "../types/article";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import CommunitySearchBar from "./Search";
 import ArticleCategoryTabs from "./ArticleCategoryTabs";
 import ArticleListItem from "./ArticleListItem";
+import ConfirmModal from "@/app/components/ui/Modal";
 
-/** 목록에서 필요한 최소 필드 */
 export type PostSummary = {
   id: number;
   title: string;
   author: string;
-  authorId: number; // ✅ 추가 (내 글/남 글 판별)
+  authorId: number;
   createdAt: string;
 
   category: PostCategory | string;
@@ -31,17 +31,17 @@ type Props = {
   writeIcon: any;
   isLoading?: boolean;
 
-  currentUserId: number; // ✅ 추가
+  currentUserId: number;
 
-  canPin: boolean; // ✅ 추가
-  onTogglePin?: (id: number) => void; // ✅ 추가
+  canPin: boolean;
+  onTogglePin?: (id: number) => void;
 
   onClickWrite?: () => void;
   onClickPost?: (id: number) => void;
 
-  onEdit?: (id: number) => void; // ✅ 추가
-  onDelete?: (id: number) => void; // ✅ 추가
-  onReport?: (id: number) => void; // ✅ 추가
+  onEdit?: (id: number) => void;
+  onDelete?: (id: number) => void;
+  onReport?: (id: number) => void;
 
   onToggleLike?: (id: number) => void;
 };
@@ -75,15 +75,32 @@ export default function ArticleList({
     });
   }, [posts, category, q]);
 
+  const [pinTarget, setPinTarget] = useState<PostSummary | null>(null);
+
+  const openPinConfirm = useCallback(
+    (post: PostSummary) => {
+      if (!canPin) return;
+      setPinTarget(post);
+    },
+    [canPin]
+  );
+
+  const closePinConfirm = useCallback(() => {
+    setPinTarget(null);
+  }, []);
+
+  const confirmTogglePin = useCallback(() => {
+    if (!pinTarget) return;
+    onTogglePin?.(pinTarget.id);
+    setPinTarget(null);
+  }, [pinTarget, onTogglePin]);
+
   return (
     <section className="rounded-xl border border-gray-200 bg-white p-8 shadow-sm">
       {/* 상단: Search + 글쓰기 버튼 */}
       <div className="flex items-center gap-1">
         <div className="flex-1">
-          <CommunitySearchBar
-            value={keyword}
-            onChange={(e: any) => setKeyword(e.target.value)}
-          />
+          <CommunitySearchBar value={keyword} onChange={setKeyword} />
         </div>
 
         <button
@@ -116,8 +133,8 @@ export default function ArticleList({
               key={post.id}
               post={post}
               currentUserId={currentUserId}
-              canPin={canPin} // ✅ 추가
-              onTogglePin={(id) => onTogglePin?.(id)}
+              canPin={canPin}
+              onRequestTogglePin={() => openPinConfirm(post)}
               onClick={() => onClickPost?.(post.id)}
               onEdit={(id) => onEdit?.(id)}
               onDelete={(id) => onDelete?.(id)}
@@ -133,6 +150,20 @@ export default function ArticleList({
           )}
         </div>
       )}
+
+      <ConfirmModal
+        isOpen={pinTarget != null}
+        message={
+          pinTarget?.pinned
+            ? "게시글 고정을 해제할까요?"
+            : "게시글을 고정할까요?"
+        }
+        confirmText={pinTarget?.pinned ? "고정 해제" : "고정"}
+        cancelText="취소"
+        confirmVariant="primary"
+        onCancel={closePinConfirm}
+        onConfirm={confirmTogglePin}
+      />
     </section>
   );
 }

@@ -9,14 +9,14 @@ import Image from "next/image";
 import upload from "../../assets/file_upload.svg";
 
 type Props = {
-  communityId: number; // ✅ 추가
+  communityId: number;
   currentUserId: number;
   items: CommunityResourceDto[];
   isLoading?: boolean;
   errorMsg?: string | null;
   onRetry?: () => void;
 
-  onUploaded?: () => void; // ✅ 업로드 후 목록 재조회 용도
+  onUploaded?: () => void;
   onDeleted?: () => void;
 };
 
@@ -47,7 +47,7 @@ export default function FileList({
         title: payload.title,
         multipartFile: payload.file,
       });
-      onUploaded?.(); // ✅ 목록 재조회
+      onUploaded?.();
     } catch (e: any) {
       setUploadError(e?.message ?? "자료 업로드에 실패했습니다.");
       throw e;
@@ -59,10 +59,7 @@ export default function FileList({
       {/* 검색 + 업로드 버튼 */}
       <div className="mt-2 flex items-center gap-3">
         <div className="flex-1">
-          <CommunitySearchBar
-            value={keyword}
-            onChange={(e) => setKeyword(e.target.value)}
-          />
+          <CommunitySearchBar value={keyword} onChange={setKeyword} />
         </div>
 
         <button type="button" onClick={() => setUploadOpen(true)}>
@@ -96,7 +93,7 @@ export default function FileList({
       {/* 리스트 */}
       <div className="mt-6 space-y-4">
         {!isLoading && filtered.length === 0 && (
-          <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-10 text-center text-sm font-semibold text-gray-500">
+          <div className="px-4 py-10 text-center text-sm font-semibold text-gray-500">
             자료가 없습니다.
           </div>
         )}
@@ -105,8 +102,8 @@ export default function FileList({
           <FileListItem
             key={item.id}
             item={item}
-            currentUserId={currentUserId} // ✅ 추가
-            onDeleted={onDeleted} // ✅ 추가
+            currentUserId={currentUserId}
+            onDeleted={onDeleted}
           />
         ))}
       </div>

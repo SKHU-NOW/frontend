@@ -1,7 +1,7 @@
 "use client";
 
 import clsx from "clsx";
-import type { Post, PostCategory } from "../types/article";
+import type { PostCategory } from "../types/article";
 import { categoryStyle } from "../types/article";
 import Image from "next/image";
 import menu from "../../assets/icon_menu.svg";
@@ -12,15 +12,16 @@ import comment from "../../assets/icon_comment.svg";
 import likeEmpty from "../../assets/like_empty.svg";
 import likeFull from "../../assets/like_full.svg";
 import { PostSummary } from "./ArticleList";
+import { formatTimeAgo } from "@/app/lib/utils/time";
 
 type Props = {
   post: PostSummary;
-  currentUserId: number; // ✅ 추가: 내 글/남 글 판단용
-  canPin: boolean; // ✅ 추가
-  onTogglePin?: (postId: number) => void;
+  currentUserId: number;
+  canPin: boolean;
+  onRequestTogglePin?: () => void;
   onEdit?: (postId: number) => void;
   onDelete?: (postId: number) => void;
-  onReport?: (postId: number) => void; // ✅ 남 글일 때
+  onReport?: (postId: number) => void;
   onClick?: () => void;
   onToggleLike?: (postId: number) => void;
 };
@@ -29,7 +30,7 @@ export default function ArticleListItem({
   post,
   currentUserId,
   canPin,
-  onTogglePin,
+  onRequestTogglePin,
   onEdit,
   onDelete,
   onReport,
@@ -50,15 +51,9 @@ export default function ArticleListItem({
   const handleContextMenu = (e: React.MouseEvent) => {
     e.preventDefault();
 
-    // ✅ 생성자 아니면: 아예 고정 불가(우클릭 메뉴도 안 뜸)
     if (!canPin) return;
 
-    const ok = window.confirm(
-      isPinned ? "게시글 고정을 해제할까요?" : "게시글을 고정할까요?"
-    );
-    if (!ok) return;
-
-    onTogglePin?.(post.id);
+    onRequestTogglePin?.();
   };
 
   return (
@@ -67,7 +62,6 @@ export default function ArticleListItem({
       onContextMenu={handleContextMenu}
       className={clsx(
         "relative flex items-center justify-between rounded-md border px-5 py-1.5 cursor-pointer transition-colors",
-        // ✅ pinned일 때: 빨간 테두리 + #FFF3EE 배경
         isPinned
           ? "border-red-400 border-2 bg-[#FFF3EE] hover:bg-[#FFE9E0]"
           : "border-gray-300 bg-white hover:bg-gray-50"
@@ -84,7 +78,8 @@ export default function ArticleListItem({
       <div className="pl-2">
         <p className="text-base font-extrabold text-gray-900">{post.title}</p>
         <p className="text-sm text-gray-600">
-          {post.author} {post.createdAt}
+          {post.author} <span className="text-gray-300">|</span>{" "}
+          {formatTimeAgo(post.createdAt)}
         </p>
       </div>
 

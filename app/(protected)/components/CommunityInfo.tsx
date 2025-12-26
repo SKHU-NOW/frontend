@@ -6,7 +6,7 @@ import Image from "next/image";
 import { useState } from "react";
 
 import starEmpty from "@/app/assets/star_empty.svg";
-import starFull from "@/app/assets/star_full.svg";
+import starFull from "@/app/assets/star_blue.svg";
 
 type Props = {
   communityId: number; // ✅ 추가
