@@ -6,6 +6,19 @@ export type CreateCommunityPayload = {
   semester: number;
 };
 
+export type CommunityRole = "ADMIN" | "USER" | string;
+
+export type CommunityMembershipDto = {
+  id: number;
+  role: CommunityRole;
+  joinAt: string;
+  userId: number;
+  userNickname: string;
+  communityId: number;
+  banned: boolean;
+  pinned: boolean;
+};
+
 export type CommunityDto = {
   id: number;
   name: string;
@@ -14,6 +27,8 @@ export type CommunityDto = {
   adminNickname: string;
   createdAt: string;
   updatedAt: string;
+
+  communityMembershipResponse?: CommunityMembershipDto | null;
 };
 
 export type ApiResponse<T> = {
@@ -33,6 +48,16 @@ export const communityService = {
 
   getCommunityById: (communityId: number) =>
     api.get<CommunityDto>(`/communities/${communityId}`),
+
+  toggleCommunityPinned: (communityId: number) => {
+    return api.patch<CommunityDto>(
+      `/communities/${communityId}/pinned`,
+      undefined,
+      {
+        auth: true,
+      }
+    );
+  },
 
   deleteCommunity: (communityId: number) => {
     return api.delete<ApiResponse<string>>(`/communities/${communityId}`, {

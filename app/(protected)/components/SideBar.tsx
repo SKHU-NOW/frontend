@@ -99,9 +99,9 @@ export default function Sidebar({ items, className }: Props) {
                     // (선택) 저장 후 닫기
                     // setProfileOpen(false);
                   }}
-                  onLogout={() => {
-                    logout?.();
+                  onLogout={async () => {
                     setProfileOpen(false);
+                    await logout();
                   }}
                 />
               </div>

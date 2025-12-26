@@ -33,12 +33,19 @@ export function clearTokens() {
   if (typeof window === "undefined") return;
   localStorage.removeItem(ACCESS_KEY);
   localStorage.removeItem(REFRESH_KEY);
+
+  logoutNonce += 1;
+  refreshPromise = null;
 }
 
 /** ---- Refresh single-flight(동시 401 방지) ---- */
 let refreshPromise: Promise<Tokens> | null = null;
 
+let logoutNonce = 0;
+
 async function refreshTokens(): Promise<Tokens> {
+  const nonceAtStart = logoutNonce;
+
   const refreshToken = getRefreshToken();
   if (!refreshToken) throw new Error("No refreshToken");
 
@@ -63,6 +70,16 @@ async function refreshTokens(): Promise<Tokens> {
   const json = (await res.json()) as ApiEnvelope<Tokens>;
   if (!json?.success || !json.data?.accessToken || !json.data?.refreshToken) {
     throw new Error("Invalid refresh response");
+  }
+
+  // ✅ refresh 끝났는데 그 사이 로그아웃이 발생했으면 토큰 세팅 금지
+  if (logoutNonce !== nonceAtStart) {
+    throw new Error("Refresh ignored: logged out");
+  }
+
+  // ✅ 혹시 refreshToken이 중간에 사라졌으면(로그아웃) 토큰 세팅 금지
+  if (!getRefreshToken()) {
+    throw new Error("Refresh ignored: refreshToken cleared");
   }
 
   setTokens(json.data);

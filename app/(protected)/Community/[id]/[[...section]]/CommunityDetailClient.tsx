@@ -1,7 +1,7 @@
 // app/(protected)/Community/[id]/[[...section]]/CommunityDetailClient.tsx
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 
 import CommunityInfoCard from "@/app/(protected)/components/CommunityInfo";
@@ -43,38 +43,77 @@ export default function CommunityDetailClient() {
     }
   }, [communityId, section, router]);
 
-  // 2) 커뮤니티 상세 조회 API 연결
-  useEffect(() => {
-    const run = async () => {
-      if (!Number.isFinite(communityId)) return;
+  const fetchCommunity = useCallback(async () => {
+    if (!Number.isFinite(communityId)) return;
 
-      try {
-        setLoading(true);
-        const data = await communityService.getCommunityById(communityId);
-        setCommunity(data);
-      } catch (e) {
-        // 상세가 없거나 권한 없으면 목록으로
-        router.replace("/Community");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    run();
+    try {
+      setLoading(true);
+      const data = await communityService.getCommunityById(communityId);
+      setCommunity(data);
+    } catch {
+      router.replace("/Community");
+    } finally {
+      setLoading(false);
+    }
   }, [communityId, router]);
+
+  useEffect(() => {
+    fetchCommunity();
+  }, [fetchCommunity]);
 
   const Left = useMemo(() => {
     if (!section) return null;
     if (section === "Article")
-      return <CommunityArticlePage communityId={communityId} />;
+      return (
+        <CommunityArticlePage
+          communityId={communityId}
+          adminNickname={community?.adminNickname ?? ""}
+        />
+      );
     if (section === "File")
       return <CommunityFilePage communityId={communityId} />;
     return null;
-  }, [section, communityId]);
+  }, [section, communityId, community?.adminNickname]);
 
   const termText = community
     ? `${community.year}년 ${community.semester}학기`
     : "-";
+
+  const isStarred = !!community?.communityMembershipResponse?.pinned;
+
+  const handleToggleStar = useCallback(async () => {
+    if (!Number.isFinite(communityId)) return;
+
+    // optimistic
+    setCommunity((prev) => {
+      if (!prev) return prev;
+      const prevPinned = !!prev.communityMembershipResponse?.pinned;
+
+      const nextMembership = {
+        ...(prev.communityMembershipResponse ?? {
+          id: -1,
+          role: "MEMBER",
+          joinAt: new Date().toISOString(),
+          userId: -1,
+          userNickname: "",
+          communityId,
+          banned: false,
+          pinned: false,
+        }),
+        pinned: !prevPinned,
+      };
+
+      return { ...prev, communityMembershipResponse: nextMembership };
+    });
+
+    try {
+      const updated = await communityService.toggleCommunityPinned(communityId);
+      setCommunity(updated);
+    } catch (e: any) {
+      await fetchCommunity(); // rollback
+      alert(e?.message ?? "즐겨찾기 처리에 실패했습니다.");
+    }
+  }, [communityId, fetchCommunity]);
 
   return (
     <div className="mx-auto py-8 pl-40 pr-30">
@@ -89,7 +128,8 @@ export default function CommunityDetailClient() {
             title={loading ? "불러오는 중..." : community?.name ?? "-"}
             term={loading ? "-" : termText}
             manager={loading ? "-" : community?.adminNickname ?? "-"}
-            starIconSrc={starIcon}
+            isStarred={isStarred}
+            onToggleStar={handleToggleStar}
             onDeleted={() => router.replace("/Community")}
           />
           <ScheduleCard />

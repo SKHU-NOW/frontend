@@ -1,4 +1,3 @@
-// app/providers/AuthProvider.tsx
 "use client";
 
 import React, {
@@ -13,13 +12,14 @@ import { getAccessToken, getRefreshToken } from "../lib/api/fetchClient";
 
 import { api, setTokens, clearTokens } from "../lib/api/fetchClient";
 import { MyProfile, userService } from "../lib/api/userService";
+import { useRouter } from "next/navigation";
 
 type AuthContextValue = {
   isLoading: boolean;
   isAuthenticated: boolean;
   user: MyProfile | null;
   login: () => void;
-  logout: () => void;
+  logout: () => Promise<void>;
   refreshMe: () => Promise<void>;
 };
 
@@ -36,6 +36,7 @@ export default function AuthProvider({
 }: {
   children: React.ReactNode;
 }) {
+  const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
   const [user, setUser] = useState<MyProfile | null>(null);
 
@@ -84,16 +85,27 @@ export default function AuthProvider({
     boot();
   }, []);
 
+  const logout = async () => {
+    // ✅ 1) 먼저 클라 토큰/상태 제거 (이 순간부터 “로그아웃 상태”)
+    clearTokens();
+    setUser(null);
+
+    // ✅ 2) 서버 로그아웃은 best effort (실패해도 무시)
+    try {
+      await authService.logout();
+    } catch {}
+
+    // ✅ 3) 홈으로 이동
+    router.replace("/");
+  };
+
   const value = useMemo<AuthContextValue>(
     () => ({
       isLoading,
       isAuthenticated,
       user,
       login: () => authService.startMicrosoftLogin(),
-      logout: () => {
-        clearTokens();
-        setUser(null);
-      },
+      logout,
       refreshMe,
     }),
     [isLoading, isAuthenticated, user]

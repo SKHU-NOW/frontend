@@ -1,7 +1,8 @@
 "use client";
 
 import Image from "next/image";
-import starIconSrc from "../../assets/star_empty.svg";
+import starEmpty from "../../assets/star_empty.svg";
+import starFull from "../../assets/star_full.svg";
 
 export type Community = {
   id: string;
@@ -21,6 +22,8 @@ export default function CommunityCard({
   onClick,
   onToggleStar,
 }: Props) {
+  const icon = community.isStarred ? starFull : starEmpty;
+
   return (
     <div
       onClick={onClick}
@@ -37,10 +40,10 @@ export default function CommunityCard({
           e.stopPropagation();
           onToggleStar?.();
         }}
-        className="flex h-9 w-9 items-center justify-center rounded-md hover:bg-gray-100"
+        className="flex h-9 w-9 items-center justify-center rounded-md"
         aria-label="즐겨찾기"
       >
-        <Image src={starIconSrc} alt="즐겨찾기" width={18} height={18} />
+        <Image src={icon} alt="즐겨찾기" width={18} height={18} />
       </button>
     </div>
   );

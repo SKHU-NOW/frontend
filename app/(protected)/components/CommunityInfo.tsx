@@ -5,12 +5,16 @@ import { communityService } from "@/app/lib/api/community";
 import Image from "next/image";
 import { useState } from "react";
 
+import starEmpty from "@/app/assets/star_empty.svg";
+import starFull from "@/app/assets/star_full.svg";
+
 type Props = {
   communityId: number; // ✅ 추가
   title: string;
   term: string;
   manager: string;
-  starIconSrc: any;
+  isStarred: boolean;
+  onToggleStar?: () => void;
   onDeleted?: () => void; // ✅ 추가 (삭제 후 라우팅 등)
 };
 
@@ -19,7 +23,8 @@ export default function CommunityInfoCard({
   title,
   term,
   manager,
-  starIconSrc,
+  isStarred,
+  onToggleStar,
   onDeleted,
 }: Props) {
   const [isDeleting, setIsDeleting] = useState(false);
@@ -41,14 +46,16 @@ export default function CommunityInfoCard({
     }
   };
 
+  const icon = isStarred ? starFull : starEmpty;
+
   return (
     <div className="relative rounded-xl border border-gray-200 bg-white p-8 shadow-sm">
       <button
         type="button"
-        className="absolute right-4 top-4 h-10 w-10 rounded-md hover:bg-gray-50 flex items-center justify-center"
-        aria-label="즐겨찾기"
+        className="absolute right-4 top-4 h-10 w-10 rounded-md  flex items-center justify-center"
+        onClick={onToggleStar}
       >
-        <Image src={starIconSrc} alt="즐겨찾기" width={22} height={22} />
+        <Image src={icon} alt="즐겨찾기" width={22} height={22} />
       </button>
 
       <div className="text-center">
