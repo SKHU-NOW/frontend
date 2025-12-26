@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import starEmpty from "../../assets/star_empty.svg";
-import starFull from "../../assets/star_full.svg";
+import starFull from "../../assets/star_blue.svg";
 
 export type Community = {
   id: string;

@@ -1,4 +1,3 @@
-// 상단 헤더는 여기서, 인증용 왼쪽 사이드 헤더는 여기서 조건 처리 -> 컴포 자체는 protected에서
 "use client";
 import Image from "next/image";
 import Link from "next/link";
@@ -28,7 +27,7 @@ export default function Header() {
             title="로그인"
             variant="primary"
             className="w-28 h-10"
-            onClick={login}
+            onClick={() => login({ forceReauth: true })}
           />
         )}
       </div>

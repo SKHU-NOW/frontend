@@ -18,7 +18,10 @@ type AuthContextValue = {
   isLoading: boolean;
   isAuthenticated: boolean;
   user: MyProfile | null;
-  login: () => void;
+  login: (opts?: {
+    forceAccountSelect?: boolean;
+    forceReauth?: boolean;
+  }) => void;
   logout: () => Promise<void>;
   refreshMe: () => Promise<void>;
 };
@@ -86,17 +89,29 @@ export default function AuthProvider({
   }, []);
 
   const logout = async () => {
-    // ✅ 1) 먼저 클라 토큰/상태 제거 (이 순간부터 “로그아웃 상태”)
+    const refreshToken = getRefreshToken();
+
     clearTokens();
     setUser(null);
 
-    // ✅ 2) 서버 로그아웃은 best effort (실패해도 무시)
     try {
-      await authService.logout();
+      await authService.logout(refreshToken);
     } catch {}
 
-    // ✅ 3) 홈으로 이동
     router.replace("/");
+  };
+
+  const login = (opts?: {
+    forceAccountSelect?: boolean;
+    forceReauth?: boolean;
+  }) => {
+    const prompt = opts?.forceReauth
+      ? "login"
+      : opts?.forceAccountSelect === false
+      ? "none"
+      : "select_account";
+
+    authService.startMicrosoftLogin({ prompt });
   };
 
   const value = useMemo<AuthContextValue>(
@@ -104,7 +119,7 @@ export default function AuthProvider({
       isLoading,
       isAuthenticated,
       user,
-      login: () => authService.startMicrosoftLogin(),
+      login,
       logout,
       refreshMe,
     }),

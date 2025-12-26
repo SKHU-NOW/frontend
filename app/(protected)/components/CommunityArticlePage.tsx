@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import ArticleList, {
   PostSummary,
 } from "@/app/(protected)/components/ArticleList";
@@ -12,6 +12,7 @@ import { articleService, CommunityPostDto } from "@/app/lib/api/article";
 import { useAuth } from "@/app/providers/AuthProvider";
 import ConfirmModal from "@/app/components/ui/Modal";
 import { commentService, CommunityCommentDto } from "@/app/lib/api/comment";
+import TextModal from "@/app/components/ui/TextModal";
 
 type Mode = "list" | "detail" | "create" | "edit";
 
@@ -55,6 +56,33 @@ export default function CommunityArticlePage({
 
   const [likedMap, setLikedMap] = useState<Record<number, boolean>>({});
 
+  const baseOrderRef = useRef<Record<number, number>>({});
+
+  const [reportTarget, setReportTarget] = useState<{
+    postId: number;
+    reportedUserId: number;
+  } | null>(null);
+
+  const [reportReason, setReportReason] = useState("");
+  const [isReportTextOpen, setIsReportTextOpen] = useState(false);
+  const [isReportConfirmOpen, setIsReportConfirmOpen] = useState(false);
+  const [isReporting, setIsReporting] = useState(false);
+
+  function reorderByPinnedAndBaseOrder(list: CommunityPostDto[]) {
+    const order = baseOrderRef.current;
+
+    return [...list].sort((a, b) => {
+      const ap = a.pinned ? 1 : 0;
+      const bp = b.pinned ? 1 : 0;
+
+      if (bp !== ap) return bp - ap;
+
+      const ai = order[a.id] ?? Number.MAX_SAFE_INTEGER;
+      const bi = order[b.id] ?? Number.MAX_SAFE_INTEGER;
+      return ai - bi;
+    });
+  }
+
   const fetchPosts = useCallback(async () => {
     if (!Number.isFinite(communityId)) return;
 
@@ -63,7 +91,14 @@ export default function CommunityArticlePage({
 
     try {
       const data = await articleService.getCommunityPosts(communityId);
-      setPosts(data);
+
+      const nextOrder: Record<number, number> = {};
+      data.forEach((p, idx) => {
+        nextOrder[p.id] = idx;
+      });
+      baseOrderRef.current = nextOrder;
+
+      setPosts(reorderByPinnedAndBaseOrder(data));
 
       setLikedMap((prev) => {
         const next = { ...prev };
@@ -147,7 +182,12 @@ export default function CommunityArticlePage({
       try {
         const updated = await articleService.togglePostPin(communityId, postId);
 
-        setPosts((prev) => prev.map((p) => (p.id === postId ? updated : p)));
+        setPosts((prev) => {
+          const replaced = prev.map((p) => (p.id === postId ? updated : p));
+
+          return reorderByPinnedAndBaseOrder(replaced);
+        });
+
         setDetail((prev) => (prev?.id === postId ? updated : prev));
       } catch (e: any) {
         alert(e?.message ?? "게시글 고정 처리에 실패했습니다.");
@@ -158,22 +198,31 @@ export default function CommunityArticlePage({
 
   /** 목록용 요약 배열 */
   const summaries = useMemo<PostSummary[]>(() => {
-    return posts.map((p) => ({
+    const mapped = posts.map((p) => ({
       id: p.id,
       title: p.title,
       author: p.authorNickname,
       authorId: p.authorId,
-      createdAt: p.createdAt, // 필요하면 dayjs로 포맷
+      createdAt: p.createdAt,
       category: mapCategory(p.category),
       viewCount: p.views,
       likeCount: p.likes,
       commentCount: p.comments,
-      pinned: p.pinned, // ✅ (선택) 상단 고정 표시용으로 쓰고 싶으면 ArticleListItem에서 활용 가능
+      pinned: p.pinned,
       isLiked: likedMap[p.id] ?? false,
     }));
+
+    return mapped
+      .map((item, idx) => ({ item, idx }))
+      .sort((a, b) => {
+        const ap = a.item.pinned ? 1 : 0;
+        const bp = b.item.pinned ? 1 : 0;
+        if (bp !== ap) return bp - ap;
+        return a.idx - b.idx;
+      })
+      .map(({ item }) => item);
   }, [posts, likedMap]);
 
-  // ✅ 댓글 DTO -> ArticleComments에 맞는 형태로 변환
   const mappedComments = useMemo(() => {
     return comments.map((c) => ({
       id: c.id,
@@ -189,7 +238,7 @@ export default function CommunityArticlePage({
     if (!detail) return null;
 
     return {
-      id: detail.id, // ✅ number로 유지하려면 ArticleDetail 타입도 바꿔야 함
+      id: detail.id,
       title: detail.title,
       content: detail.content,
 
@@ -197,6 +246,7 @@ export default function CommunityArticlePage({
       createdAt: detail.createdAt,
       viewCount: detail.views,
       category: mapCategory(detail.category),
+      imageUrl: detail.imageUrl,
 
       likeCount: detail.likes,
       isLiked: likedMap[detail.id] ?? false,
@@ -240,20 +290,17 @@ export default function CommunityArticlePage({
         setMode("list");
       }
     } catch (e: any) {
-      // 실패하면 모달은 닫지 않고 메시지만 바꾸고 싶으면 state 추가하면 됨
       alert(e?.message ?? "게시글 삭제에 실패했습니다.");
     } finally {
       setIsDeleting(false);
     }
   };
 
-  // ✅ 댓글 등록 핸들러
   const handleSubmitComment = async (content: string) => {
     if (!selectedId) return;
 
     try {
       await commentService.createComment(selectedId, { content });
-      // 등록 후 최신 목록 재조회
       await fetchComments(selectedId);
     } catch (e: any) {
       alert(e?.message ?? "댓글 등록에 실패했습니다.");
@@ -265,10 +312,8 @@ export default function CommunityArticlePage({
     await fetchComments(selectedId);
   }, [selectedId, fetchComments]);
 
-  /** ✅ 게시글 신고 연결 */
   const handleReportPost = useCallback(
-    async (postId: number) => {
-      // 목록 state에서 authorId 확보
+    (postId: number) => {
       const target = posts.find((p) => p.id === postId);
       const reportedUserId = target?.authorId;
 
@@ -277,19 +322,10 @@ export default function CommunityArticlePage({
         return;
       }
 
-      // (선택) 사유 입력
-      const reason = window.prompt("신고 사유를 입력하세요 (선택)", "") ?? "";
-
-      try {
-        await articleService.reportPost({
-          postId,
-          reportedUserId,
-          reason,
-        });
-        alert("신고가 접수되었습니다.");
-      } catch (e: any) {
-        alert(e?.message ?? "신고에 실패했습니다.");
-      }
+      // 1) 타겟 저장 + 텍스트 모달 오픈
+      setReportTarget({ postId, reportedUserId });
+      setReportReason("");
+      setIsReportTextOpen(true);
     },
     [posts]
   );
@@ -301,14 +337,11 @@ export default function CommunityArticlePage({
     const postId = selectedId;
     const prevLiked = likedMap[postId] ?? false;
 
-    // 1) optimistic: 하트 상태만 먼저 토글
     setLikedMap((prev) => ({ ...prev, [postId]: !prevLiked }));
 
     try {
-      // 2) 서버 토글
       const updated = await articleService.togglePostLike(communityId, postId);
 
-      // 3) 상세/목록 likes 동기화
       setDetail(updated);
       setPosts((prev) => prev.map((p) => (p.id === postId ? updated : p)));
     } catch (e: any) {
@@ -325,7 +358,6 @@ export default function CommunityArticlePage({
 
       const prevLiked = likedMap[postId] ?? false;
 
-      // optimistic
       setLikedMap((prev) => ({ ...prev, [postId]: !prevLiked }));
 
       try {
@@ -334,10 +366,8 @@ export default function CommunityArticlePage({
           postId
         );
 
-        // 목록 갱신
         setPosts((prev) => prev.map((p) => (p.id === postId ? updated : p)));
 
-        // 만약 지금 상세 보고 있는 글이라면 상세도 같이 갱신
         setDetail((prev) => (prev?.id === postId ? updated : prev));
       } catch (e: any) {
         setLikedMap((prev) => ({ ...prev, [postId]: prevLiked }));
@@ -347,6 +377,32 @@ export default function CommunityArticlePage({
     [communityId, likedMap]
   );
 
+  const submitReport = useCallback(async () => {
+    if (!reportTarget) return;
+    if (isReporting) return;
+
+    try {
+      setIsReporting(true);
+
+      await articleService.reportPost({
+        postId: reportTarget.postId,
+        reportedUserId: reportTarget.reportedUserId,
+        reason: reportReason,
+      });
+
+      alert("신고가 접수되었습니다.");
+
+      setIsReportConfirmOpen(false);
+      setIsReportTextOpen(false);
+      setReportTarget(null);
+      setReportReason("");
+    } catch (e: any) {
+      alert(e?.message ?? "신고에 실패했습니다.");
+    } finally {
+      setIsReporting(false);
+    }
+  }, [reportTarget, reportReason, isReporting]);
+
   if (mode === "create" || mode === "edit") {
     return (
       <ArticleCreateForm
@@ -354,12 +410,10 @@ export default function CommunityArticlePage({
         mode={mode === "create" ? "create" : "edit"}
         postId={mode === "edit" ? selectedId ?? undefined : undefined}
         onCancel={() => {
-          // edit였다면 detail로, create였다면 list로 돌아가게
           if (mode === "edit" && selectedId) setMode("detail");
           else setMode("list");
         }}
         onSaved={async (saved) => {
-          // 저장 후 목록 갱신 + 해당 글 상세로 이동
           await fetchPosts();
           setSelectedId(saved.id);
           setMode("detail");
@@ -451,6 +505,44 @@ export default function CommunityArticlePage({
           setDeleteTargetId(null);
         }}
         onConfirm={handleConfirmDelete}
+      />
+
+      <TextModal
+        isOpen={isReportTextOpen}
+        title="신고 사유를 입력하세요"
+        placeholder="예) 욕설/비방, 불법 광고, 도배 등"
+        helperText="입력 후 '다음'을 누르면 최종 확인 창이 열립니다."
+        confirmText="다음"
+        cancelText="취소"
+        initialValue={reportReason}
+        onCancel={() => {
+          if (isReporting) return;
+          setIsReportTextOpen(false);
+          setReportTarget(null);
+          setReportReason("");
+        }}
+        onConfirm={(value) => {
+          // 2) 텍스트 저장 후 최종 확인창 오픈
+          setReportReason(value);
+          setIsReportTextOpen(false);
+          setIsReportConfirmOpen(true);
+        }}
+      />
+
+      <ConfirmModal
+        isOpen={isReportConfirmOpen}
+        message="게시글을 신고하시겠습니까?"
+        confirmText={isReporting ? "신고 중..." : "신고"}
+        cancelText="취소"
+        confirmVariant="danger"
+        onCancel={() => {
+          if (isReporting) return;
+          setIsReportConfirmOpen(false);
+
+          // 다시 사유 입력으로 돌아가고 싶으면 아래처럼:
+          setIsReportTextOpen(true);
+        }}
+        onConfirm={submitReport}
       />
     </div>
   );

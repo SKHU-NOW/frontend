@@ -5,7 +5,7 @@ import search from "../../assets/search.svg";
 
 type Props = {
   value: string;
-  onChange: (v: any) => void;
+  onChange: (v: string) => void;
   placeholder?: string;
   className?: string;
 };
@@ -30,7 +30,7 @@ export default function CommunitySearchBar({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="w-full h-11 rounded-md border border-gray-500 bg-gray-100 shadow-[0px_4px_4px_0px_rgba(0,0,0,0.05)] pl-11 pr-4 text-[16px] text-gray-500 font-medium outline-none
+        className="w-full h-11 rounded-md border border-gray-500 bg-gray-100 shadow-[0px_4px_4px_0px_rgba(0,0,0,0.05)] pl-11 pr-4 text-[16px] text-gray-500 font-medium outline-none hover:border-primary-500 
                    "
       />
     </div>

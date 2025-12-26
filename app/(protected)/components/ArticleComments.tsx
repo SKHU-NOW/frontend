@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useCallback } from "react";
 import Image from "next/image";
 
 import commentIcon from "../../assets/icon_comment.svg";
@@ -8,6 +8,10 @@ import { commentService } from "@/app/lib/api/comment";
 import ArticleActionMenu from "./ActionMenu";
 import clickMenu from "../../assets/menu_clicked.svg";
 import menu from "../../assets/icon_menu.svg";
+import { formatTimeAgo } from "@/app/lib/utils/time";
+
+import ConfirmModal from "@/app/components/ui/Modal";
+import TextModal from "@/app/components/ui/TextModal";
 
 export type Comment = {
   id: number;
@@ -22,13 +26,9 @@ type Props = {
   comments: Comment[];
   isLoading?: boolean;
 
-  currentUserId: number; // ✅ 추가: 내 댓글 판단
+  currentUserId: number;
   onSubmitComment?: (content: string) => void;
-
-  // ✅ 댓글 변경 후(수정/삭제/등록) 재조회 트리거
   onRefreshComments?: () => Promise<void> | void;
-
-  // ✅ 신고 시 필요한 post 작성자(= 신고 대상 id가 아니라 댓글 작성자 id를 넣을 거라 필수는 아님)
 };
 
 export default function ArticleComments({
@@ -46,6 +46,95 @@ export default function ArticleComments({
     [commentDraft]
   );
 
+  const [reportTarget, setReportTarget] = useState<{
+    commentId: number;
+    reportedUserId: number;
+    authorNickname: string;
+  } | null>(null);
+
+  const [reportReason, setReportReason] = useState("");
+  const [isReportTextOpen, setIsReportTextOpen] = useState(false);
+  const [isReportConfirmOpen, setIsReportConfirmOpen] = useState(false);
+  const [isReporting, setIsReporting] = useState(false);
+
+  const openReportForComment = useCallback(
+    (c: Comment) => {
+      // 내 댓글은 신고 불가
+      if (c.authorId === currentUserId) return;
+
+      setReportTarget({
+        commentId: c.id,
+        reportedUserId: c.authorId,
+        authorNickname: c.authorNickname,
+      });
+      setReportReason("");
+      setIsReportTextOpen(true);
+    },
+    [currentUserId]
+  );
+
+  const submitReport = useCallback(async () => {
+    if (!reportTarget) return;
+    if (isReporting) return;
+
+    try {
+      setIsReporting(true);
+
+      await commentService.reportComment(reportTarget.commentId, {
+        reportedUserId: reportTarget.reportedUserId,
+        reason: reportReason.trim() || undefined,
+      });
+
+      alert("신고가 접수되었습니다.");
+
+      // 닫기/초기화
+      setIsReportConfirmOpen(false);
+      setIsReportTextOpen(false);
+      setReportTarget(null);
+      setReportReason("");
+    } catch (e: any) {
+      alert(e?.message ?? "댓글 신고에 실패했습니다.");
+    } finally {
+      setIsReporting(false);
+    }
+  }, [reportTarget, reportReason, isReporting]);
+
+  const [deleteTarget, setDeleteTarget] = useState<{
+    commentId: number;
+    authorNickname: string;
+  } | null>(null);
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const openDeleteConfirmForComment = useCallback(
+    (c: Comment) => {
+      // 내 댓글만 삭제 가능
+      if (c.authorId !== currentUserId) return;
+
+      setDeleteTarget({ commentId: c.id, authorNickname: c.authorNickname });
+      setIsDeleteConfirmOpen(true);
+    },
+    [currentUserId]
+  );
+
+  const submitDeleteComment = useCallback(async () => {
+    if (!deleteTarget) return;
+    if (isDeleting) return;
+
+    try {
+      setIsDeleting(true);
+      await commentService.deleteComment(deleteTarget.commentId);
+      await onRefreshComments?.();
+
+      setIsDeleteConfirmOpen(false);
+      setDeleteTarget(null);
+    } catch (e: any) {
+      alert(e?.message ?? "댓글 삭제에 실패했습니다.");
+    } finally {
+      setIsDeleting(false);
+    }
+  }, [deleteTarget, isDeleting, onRefreshComments]);
+
   return (
     <div className="mt-6 rounded-[10px] border border-gray-300 bg-white">
       {/* 헤더 */}
@@ -57,7 +146,7 @@ export default function ArticleComments({
         <span className="font-semibold text-gray-700">{commentCount}</span>
       </div>
 
-      {/* 댓글 작성(맨 위로 이동) */}
+      {/* 댓글 작성 */}
       <div className="border-b border-gray-300 p-4">
         <div className="flex gap-3">
           <input
@@ -75,7 +164,6 @@ export default function ArticleComments({
 
               await onSubmitComment?.(v);
               setCommentDraft("");
-              // onSubmitComment 내부에서 refresh를 하더라도, 안전하게 한 번 더 호출 가능
               await onRefreshComments?.();
             }}
             className="h-11 w-20 rounded-[10px] bg-primary-500 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
@@ -106,9 +194,67 @@ export default function ArticleComments({
               comment={c}
               currentUserId={currentUserId}
               onRefresh={onRefreshComments}
+              onReport={() => openReportForComment(c)}
+              onRequestDelete={() => openDeleteConfirmForComment(c)}
             />
           ))}
       </div>
+
+      <TextModal
+        isOpen={isReportTextOpen}
+        title="댓글 신고 사유를 입력하세요"
+        placeholder="예) 욕설/비방, 불법 광고, 도배 등"
+        helperText={
+          reportTarget
+            ? `${reportTarget.authorNickname}님의 댓글을 신고합니다.`
+            : undefined
+        }
+        confirmText="다음"
+        cancelText="취소"
+        initialValue={reportReason}
+        onCancel={() => {
+          if (isReporting) return;
+          setIsReportTextOpen(false);
+          setReportTarget(null);
+          setReportReason("");
+        }}
+        onConfirm={(value) => {
+          setReportReason(value);
+          setIsReportTextOpen(false);
+          setIsReportConfirmOpen(true);
+        }}
+      />
+
+      <ConfirmModal
+        isOpen={isReportConfirmOpen}
+        message="댓글을 신고하시겠습니까?"
+        confirmText={isReporting ? "신고 중..." : "신고"}
+        cancelText="취소"
+        confirmVariant="danger"
+        onCancel={() => {
+          if (isReporting) return;
+          setIsReportConfirmOpen(false);
+
+          setIsReportTextOpen(true);
+        }}
+        onConfirm={submitReport}
+      />
+
+      <ConfirmModal
+        isOpen={isDeleteConfirmOpen}
+        message={
+          deleteTarget ? `해당 댓글을 삭제할까요?` : "댓글을 삭제할까요?"
+        }
+        confirmText={isDeleting ? "삭제 중..." : "삭제"}
+        cancelText="취소"
+        confirmVariant="danger"
+        onCancel={() => {
+          if (isDeleting) return;
+          setIsDeleteConfirmOpen(false);
+          setDeleteTarget(null);
+        }}
+        onConfirm={submitDeleteComment}
+      />
     </div>
   );
 }
@@ -117,19 +263,21 @@ function CommentRow({
   comment,
   currentUserId,
   onRefresh,
+  onReport,
+  onRequestDelete,
 }: {
   comment: Comment;
   currentUserId: number;
   onRefresh?: () => Promise<void> | void;
+  onReport?: () => void;
+  onRequestDelete?: () => void;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
 
-  // edit mode
   const [isEditing, setIsEditing] = useState(false);
   const [draft, setDraft] = useState(comment.content);
 
   const [isSaving, setIsSaving] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
 
   const isOwner = useMemo(
     () => Number.isFinite(currentUserId) && comment.authorId === currentUserId,
@@ -163,52 +311,16 @@ function CommentRow({
     }
   };
 
-  const handleDelete = async () => {
-    if (!isOwner) return;
-    if (isDeleting) return;
-
-    const ok = confirm("댓글을 삭제할까요?");
-    if (!ok) return;
-
-    try {
-      setIsDeleting(true);
-      await commentService.deleteComment(comment.id);
-      await onRefresh?.();
-    } catch (e: any) {
-      alert(e?.message ?? "댓글 삭제에 실패했습니다.");
-    } finally {
-      setIsDeleting(false);
-    }
-  };
-
-  const handleReport = async () => {
-    if (isOwner) return;
-
-    const reason = prompt("신고 사유를 입력하세요. (선택)");
-    try {
-      await commentService.reportComment(comment.id, {
-        reportedUserId: comment.authorId,
-        reason: reason?.trim() || undefined,
-      });
-      alert("신고가 접수되었습니다.");
-    } catch (e: any) {
-      alert(e?.message ?? "댓글 신고에 실패했습니다.");
-    }
-  };
-
   return (
     <div className="px-4 py-4">
       <div className="flex items-start gap-3">
-        {/* 프로필 원형(예시) */}
-        <div className="mt-1 h-5 w-5 shrink-0 rounded-full bg-yellow-300" />
-
         <div className="flex-1">
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-center gap-2 text-xs font-semibold text-gray-700">
               <span>{comment.authorNickname}</span>
-              <span className="text-gray-300">·</span>
+              <span className="text-gray-300">|</span>
               <span className="font-medium text-gray-500">
-                {comment.createdAt}
+                {formatTimeAgo(comment.createdAt)}
               </span>
             </div>
 
@@ -220,7 +332,6 @@ function CommentRow({
                   e.stopPropagation();
                   setMenuOpen((v) => !v);
                 }}
-                aria-label="comment menu"
               >
                 <Image
                   src={menuOpen ? clickMenu : menu}
@@ -235,14 +346,20 @@ function CommentRow({
                 variant={isOwner ? "owner" : "other"}
                 onClose={() => setMenuOpen(false)}
                 onEdit={() => handleEditStart()}
-                onDelete={() => handleDelete()}
-                onReport={() => handleReport()}
+                onDelete={() => {
+                  setMenuOpen(false);
+                  onRequestDelete?.();
+                }}
+                onReport={() => {
+                  setMenuOpen(false);
+                  onReport?.();
+                }}
               />
             </div>
           </div>
 
           {/* 내용/수정 */}
-          <div className="mt-2">
+          <div>
             {isEditing ? (
               <div className="flex items-center gap-2">
                 <input
@@ -275,13 +392,6 @@ function CommentRow({
           </div>
         </div>
       </div>
-
-      {/* 삭제 중 표기(선택) */}
-      {isDeleting && (
-        <div className="mt-2 text-xs font-semibold text-gray-400">
-          삭제 중...
-        </div>
-      )}
     </div>
   );
 }

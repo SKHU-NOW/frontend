@@ -132,7 +132,7 @@ export default function CommunityDetailClient() {
             onToggleStar={handleToggleStar}
             onDeleted={() => router.replace("/Community")}
           />
-          <ScheduleCard />
+          <ScheduleCard communityId={communityId} />
         </aside>
       </div>
     </div>
