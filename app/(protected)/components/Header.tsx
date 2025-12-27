@@ -1,10 +1,10 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
-import clipIcon from "../../assets/Link_icon.svg";
 import { usePathname } from "next/navigation";
 import clsx from "clsx";
+import Image from "next/image";
+import logo from "../../assets/community_header.svg";
 
 export default function ProtectedHeader({
   communityId,
@@ -29,20 +29,9 @@ export default function ProtectedHeader({
   const showTabs = !isCommunityList && hasCommunityId;
 
   return (
-    <header className="sticky top-0 z-50 bg-white border-b border-gray-200">
-      <div className="flex h-20 items-center">
-        <Link
-          href="/"
-          className="flex h-20 w-20 items-center justify-center bg-primary-500"
-        >
-          <Image src={clipIcon} alt="클립" width={60} height={60} priority />
-        </Link>
-
-        <div className="pl-6">
-          <span className="text-3xl font-extrabold tracking-tight text-gray-900">
-            SKHU Link
-          </span>
-        </div>
+    <header className="fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-200 h-20">
+      <div className="flex h-20 items-center pl-6 ml-20">
+        <Image src={logo} alt="로고" />
 
         {showTabs && (
           <nav className="ml-auto pr-10">

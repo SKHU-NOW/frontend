@@ -28,7 +28,6 @@ export default function ProfilePopover({
   const [isEditing, setIsEditing] = useState(false);
   const [draft, setDraft] = useState(nickname);
 
-  // 열릴 때마다 초기화(취소 느낌)
   useEffect(() => {
     if (!open) return;
     setIsEditing(false);

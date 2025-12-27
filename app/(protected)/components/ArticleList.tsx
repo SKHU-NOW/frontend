@@ -120,7 +120,7 @@ export default function ArticleList({
 
       {/* 로딩 */}
       {isLoading && (
-        <div className="mt-6 text-sm font-semibold text-gray-500">
+        <div className="flex justify-center mt-5 text-sm font-semibold text-gray-500">
           불러오는 중...
         </div>
       )}

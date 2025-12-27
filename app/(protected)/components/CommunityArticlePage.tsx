@@ -13,6 +13,7 @@ import { useAuth } from "@/app/providers/AuthProvider";
 import ConfirmModal from "@/app/components/ui/Modal";
 import { commentService, CommunityCommentDto } from "@/app/lib/api/comment";
 import TextModal from "@/app/components/ui/TextModal";
+import { useRouter } from "next/navigation";
 
 type Mode = "list" | "detail" | "create" | "edit";
 
@@ -28,6 +29,8 @@ export default function CommunityArticlePage({
   communityId: number;
   adminNickname: string;
 }) {
+  const router = useRouter();
+
   const { user } = useAuth?.() as any;
   const currentUserId: number = Number.isFinite(user?.id)
     ? Number(user.id)
@@ -415,6 +418,17 @@ export default function CommunityArticlePage({
         }}
         onSaved={async (saved) => {
           await fetchPosts();
+          if (mode === "create") {
+            setSelectedId(null);
+            setDetail(null);
+            setComments([]);
+            setMode("list");
+
+            router.push(`/Community/${communityId}/Article`);
+            return;
+          }
+
+          // 수정 시 상세 이동
           setSelectedId(saved.id);
           setMode("detail");
         }}

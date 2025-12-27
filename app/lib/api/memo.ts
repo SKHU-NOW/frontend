@@ -7,8 +7,8 @@ export type MemoDto = {
   boardId: number;
   contentText: string;
   color: MemoColor;
-  posX: number; // 0~1 (비율)
-  posY: number; // 0~1 (비율)
+  posX: number;
+  posY: number;
   drawingImageUrl: string;
   createdAt: string;
 };
@@ -16,16 +16,15 @@ export type MemoDto = {
 export type CreateMemoPayload = {
   boardId: number;
   contentText: string;
-  posX: number; // 0~1
-  posY: number; // 0~1
-  drawingImageUrl: string; // 없으면 ""로 보내도 됨
+  posX: number;
+  posY: number;
+  drawingImageUrl: string;
 };
 
 export const memoService = {
-  /** 메모 조회 (기본: 오늘 메모 / all=true면 전체) */
+  /** 메모 조회 */
   getMemos: (all?: boolean) => {
     const qs = all ? "?all=false" : "";
-    // ✅ 인증 없이 가능하므로 auth 옵션 안 넣음
     return api.get<MemoDto[]>(`/memos${qs}`);
   },
 

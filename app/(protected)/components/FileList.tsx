@@ -11,6 +11,7 @@ import upload from "../../assets/file_upload.svg";
 type Props = {
   communityId: number;
   currentUserId: number;
+  currentUserMileage: number;
   items: CommunityResourceDto[];
   isLoading?: boolean;
   errorMsg?: string | null;
@@ -23,6 +24,7 @@ type Props = {
 export default function FileList({
   communityId,
   currentUserId,
+  currentUserMileage,
   items,
   isLoading,
   errorMsg,
@@ -103,6 +105,7 @@ export default function FileList({
             key={item.id}
             item={item}
             currentUserId={currentUserId}
+            currentUserMileage={currentUserMileage}
             onDeleted={onDeleted}
           />
         ))}

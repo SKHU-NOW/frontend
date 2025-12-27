@@ -1,4 +1,3 @@
-// app/(protected)/Community/[id]/[[...section]]/CommunityDetailClient.tsx
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -6,12 +5,13 @@ import { useParams, useRouter } from "next/navigation";
 
 import CommunityInfoCard from "@/app/(protected)/components/CommunityInfo";
 import ScheduleCard from "@/app/(protected)/components/ScheduleCard";
-import starIcon from "@/app/assets/star_empty.svg";
 
 import CommunityArticlePage from "@/app/(protected)/components/CommunityArticlePage";
 import CommunityFilePage from "@/app/(protected)/components/CommunityFilePage";
 
 import { communityService, type CommunityDto } from "@/app/lib/api/community";
+import { userService } from "@/app/lib/api/userService";
+import ConfirmModal from "@/app/components/ui/Modal";
 
 export default function CommunityDetailClient() {
   const router = useRouter();
@@ -22,12 +22,32 @@ export default function CommunityDetailClient() {
   const communityId = idStr ? Number(idStr) : NaN;
 
   const rawSection = (params as any)?.section as string[] | undefined;
-  const section = rawSection?.[0]; // "Article" | "File" | undefined
+  const section = rawSection?.[0];
 
   const [community, setCommunity] = useState<CommunityDto | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // 1) 라우팅 방어 + 초기 진입은 Article로
+  const [myNickname, setMyNickname] = useState<string>("");
+
+  const [accessDeniedOpen, setAccessDeniedOpen] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const me = await userService.getMe();
+        if (!mounted) return;
+        setMyNickname(me.nickname ?? "");
+      } catch {
+        if (!mounted) return;
+        setMyNickname("");
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
   useEffect(() => {
     if (!Number.isFinite(communityId)) {
       router.replace("/Community");
@@ -50,12 +70,15 @@ export default function CommunityDetailClient() {
       setLoading(true);
       const data = await communityService.getCommunityById(communityId);
       setCommunity(data);
+
+      setAccessDeniedOpen(false);
     } catch {
-      router.replace("/Community");
+      setCommunity(null);
+      setAccessDeniedOpen(true);
     } finally {
       setLoading(false);
     }
-  }, [communityId, router]);
+  }, [communityId]);
 
   useEffect(() => {
     fetchCommunity();
@@ -84,7 +107,6 @@ export default function CommunityDetailClient() {
   const handleToggleStar = useCallback(async () => {
     if (!Number.isFinite(communityId)) return;
 
-    // optimistic
     setCommunity((prev) => {
       if (!prev) return prev;
       const prevPinned = !!prev.communityMembershipResponse?.pinned;
@@ -110,31 +132,46 @@ export default function CommunityDetailClient() {
       const updated = await communityService.toggleCommunityPinned(communityId);
       setCommunity(updated);
     } catch (e: any) {
-      await fetchCommunity(); // rollback
+      await fetchCommunity();
       alert(e?.message ?? "즐겨찾기 처리에 실패했습니다.");
     }
   }, [communityId, fetchCommunity]);
 
   return (
-    <div className="mx-auto py-8 pl-40 pr-30">
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-8">
-        {/* 좌측: 메뉴별 */}
-        <section>{Left}</section>
+    <>
+      <div className="mx-auto pb-15 pt-10 px-40">
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-8">
+          {/* 좌측: 메뉴별 */}
+          <section>{Left}</section>
 
-        {/* 우측: 공통 카드 */}
-        <aside className="space-y-6">
-          <CommunityInfoCard
-            communityId={communityId}
-            title={loading ? "불러오는 중..." : community?.name ?? "-"}
-            term={loading ? "-" : termText}
-            manager={loading ? "-" : community?.adminNickname ?? "-"}
-            isStarred={isStarred}
-            onToggleStar={handleToggleStar}
-            onDeleted={() => router.replace("/Community")}
-          />
-          <ScheduleCard communityId={communityId} />
-        </aside>
+          {/* 우측: 공통 카드 */}
+          <aside className="space-y-6">
+            <CommunityInfoCard
+              communityId={communityId}
+              title={loading ? "불러오는 중..." : community?.name ?? "-"}
+              term={loading ? "-" : termText}
+              manager={loading ? "-" : community?.adminNickname ?? "-"}
+              adminNickname={community?.adminNickname ?? ""}
+              myNickname={myNickname}
+              isStarred={isStarred}
+              onToggleStar={handleToggleStar}
+              onDeleted={() => router.replace("/Community")}
+            />
+            <ScheduleCard communityId={communityId} />
+          </aside>
+        </div>
       </div>
-    </div>
+
+      <ConfirmModal
+        isOpen={accessDeniedOpen}
+        message={"커뮤니티 목록에서 즐겨찾기 후 이용 가능합니다."}
+        messageVariant="body"
+        confirmText="목록으로 돌아가기"
+        showCancel={false}
+        closeOnOverlay={false}
+        onConfirm={() => router.replace("/Community")}
+        onCancel={() => router.replace("/Community")}
+      />
+    </>
   );
 }

@@ -78,7 +78,7 @@ export default function ArticleListItem({
       <div className="pl-2">
         <p className="text-base font-extrabold text-gray-900">{post.title}</p>
         <p className="text-sm text-gray-600">
-          {post.author} <span className="text-gray-300">|</span>{" "}
+          {post.author} <span className="text-gray-300 px-1">|</span>{" "}
           {formatTimeAgo(post.createdAt)}
         </p>
       </div>

@@ -45,7 +45,6 @@ export const commentService = {
 
   /**
    * 댓글 신고
-   * POST /reports/comments/{commentId}?reportedUserId=...&reason=...
    */
   reportComment: (
     commentId: number,

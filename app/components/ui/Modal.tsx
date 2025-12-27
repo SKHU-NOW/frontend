@@ -1,20 +1,25 @@
 "use client";
 
-import { useEffect } from "react";
+import { ReactNode, useEffect } from "react";
 import { createPortal } from "react-dom";
 import Button from "./Button";
 
 type Props = {
   isOpen: boolean;
-  message: string;
-  confirmText?: string; // 기본 "확인"
-  cancelText?: string; // 기본 "취소"
+  message: ReactNode;
+  confirmText?: string;
+  cancelText?: string;
 
   onConfirm: () => void;
   onCancel: () => void;
 
-  // 옵션: 확인 버튼 스타일 바꾸고 싶으면
-  confirmVariant?: "primary" | "danger"; // 기본 primary
+  confirmVariant?: "primary" | "danger";
+
+  messageVariant?: "default" | "body" | "small";
+  messageClassName?: string;
+
+  showCancel?: boolean;
+  closeOnOverlay?: boolean;
 };
 
 export default function ConfirmModal({
@@ -25,6 +30,11 @@ export default function ConfirmModal({
   onConfirm,
   onCancel,
   confirmVariant = "primary",
+
+  messageVariant = "default",
+  messageClassName = "",
+  showCancel = true,
+  closeOnOverlay = true,
 }: Props) {
   useEffect(() => {
     if (!isOpen) return;
@@ -40,34 +50,30 @@ export default function ConfirmModal({
 
   if (!isOpen) return null;
 
-  const confirmBtn =
-    confirmVariant === "danger"
-      ? "bg-secondary-400 hover:bg-secondary-500 text-white border-secondary-400"
-      : "bg-secondary-400 hover:bg-secondary-500 text-white border-secondary-400";
+  const baseMessageClass =
+    "text-center text-2xl font-extrabold text-gray-900 whitespace-pre-line";
+
+  const variantClass =
+    messageVariant === "body"
+      ? "text-base font-bold text-gray-800 leading-relaxed"
+      : messageVariant === "small"
+      ? "text-sm font-semibold text-gray-700 leading-relaxed"
+      : "";
 
   return createPortal(
-    <div
-      className="
-        fixed inset-0 z-9999
-        flex items-center justify-center
-      "
-    >
-      {/* Overlay (그림자 + 모자이크) */}
+    <div className="fixed inset-0 z-9999 flex items-center justify-center">
+      {/* Overlay */}
       <button
         type="button"
-        aria-label="close"
-        onClick={onCancel}
-        className="
-          absolute inset-0
-          bg-black/25
-          backdrop-blur-xs
-        "
+        onClick={() => {
+          if (!closeOnOverlay) return;
+          onCancel();
+        }}
+        className="absolute inset-0 bg-black/25 backdrop-blur-xs"
       />
 
       {/* Modal */}
       <div
-        role="dialog"
-        aria-modal="true"
         className="
           relative w-[500px] max-w-[calc(100vw-32px)]
           rounded-[18px] border-2 border-gray-500
@@ -76,23 +82,31 @@ export default function ConfirmModal({
           shadow-[0_20px_40px_rgba(0,0,0,0.25)]
         "
       >
-        <div className="text-center text-2xl font-extrabold text-gray-900">
+        <div
+          className={`${baseMessageClass} ${variantClass} ${messageClassName}`}
+        >
           {message}
         </div>
 
-        <div className="mt-10 grid grid-cols-2 gap-3">
+        <div
+          className={`mt-10 grid ${
+            showCancel ? "grid-cols-2" : "grid-cols-1"
+          } gap-3`}
+        >
           <Button type="button" onClick={onConfirm} className="h-12">
             {confirmText}
           </Button>
 
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={onCancel}
-            className="h-12"
-          >
-            {cancelText}
-          </Button>
+          {showCancel && (
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={onCancel}
+              className="h-12"
+            >
+              {cancelText}
+            </Button>
+          )}
         </div>
       </div>
     </div>,

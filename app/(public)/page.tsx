@@ -4,20 +4,26 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import memoImg from "../assets/memo.svg";
 import plusIcon from "../assets/icon_plus.svg";
-import { memoService, type MemoDto } from "@/app/lib/api/memo";
+import { memoService, type MemoDto, type MemoColor } from "@/app/lib/api/memo";
+import { formatTimeAgoWithPlus9 } from "../lib/utils/time_memo";
 
 type DraftMemo = {
-  x: number; // px (렌더용)
-  y: number; // px (렌더용)
-  posX: number; // 0~1 (서버 저장용)
-  posY: number; // 0~1 (서버 저장용)
+  x: number;
+  y: number;
+  posX: number;
+  posY: number;
   content: string;
+  color: MemoColor;
 };
 
-const BOARD_ID = 0; // ✅ 필요하면 실제 보드 id로 변경
+const BOARD_ID = 0;
+
+const COLORS: MemoColor[] = ["RED", "YELLOW", "GREEN", "BLUE", "PURPLE"];
+function pickRandomColor(): MemoColor {
+  return COLORS[Math.floor(Math.random() * COLORS.length)];
+}
 
 function colorToBg(color: string) {
-  // 서버 color enum이 뭐가 오든 “보기 좋은 기본값”으로 매핑
   switch (color) {
     case "RED":
       return "#FCA5A5";
@@ -34,23 +40,62 @@ function colorToBg(color: string) {
   }
 }
 
+const COLOR_MAP_KEY = `skhu-link:memo-color-map:v1:board-${BOARD_ID}`;
+
+function safeLoadColorMap(): Record<number, MemoColor> {
+  try {
+    const raw = localStorage.getItem(COLOR_MAP_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+
+    const next: Record<number, MemoColor> = {};
+    for (const [k, v] of Object.entries(parsed ?? {})) {
+      const id = Number(k);
+      if (!Number.isNaN(id)) next[id] = v as MemoColor;
+    }
+    return next;
+  } catch {
+    return {};
+  }
+}
+
+function safeSaveColorMap(map: Record<number, MemoColor>) {
+  try {
+    localStorage.setItem(COLOR_MAP_KEY, JSON.stringify(map));
+  } catch {}
+}
+
 export default function LandingPage() {
   const boardRef = useRef<HTMLDivElement | null>(null);
 
   const [memos, setMemos] = useState<MemoDto[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
   const [draft, setDraft] = useState<DraftMemo | null>(null);
+
+  const [colorOverrideMap, setColorOverrideMap] = useState<
+    Record<number, MemoColor>
+  >({});
 
   const hasAnyMemo = memos.length > 0;
 
+  useEffect(() => {
+    setColorOverrideMap(safeLoadColorMap());
+  }, []);
+
+  useEffect(() => {
+    safeSaveColorMap(colorOverrideMap);
+  }, [colorOverrideMap]);
+
   const fetchMemos = async () => {
-    setIsLoading(true);
-    try {
-      const data = await memoService.getMemos(true); // ✅ all=true로 전체 조회
-      setMemos(data);
-    } finally {
-      setIsLoading(false);
-    }
+    const data = await memoService.getMemos(true);
+    setMemos(data);
+
+    setColorOverrideMap((prev) => {
+      const next = { ...prev };
+      for (const m of data) {
+        if (next[m.id] == null) next[m.id] = pickRandomColor();
+      }
+      return next;
+    });
   };
 
   useEffect(() => {
@@ -58,20 +103,17 @@ export default function LandingPage() {
   }, []);
 
   const onBoardClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    // 이미 입력창이 떠 있으면 새로 만들지 않기 (원하면 이 조건 제거 가능)
     if (draft) return;
 
     const el = boardRef.current;
     if (!el) return;
 
     const rect = el.getBoundingClientRect();
-    const x = e.clientX - rect.left; // px
-    const y = e.clientY - rect.top; // px
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
 
-    // 보드 밖 클릭 방지
     if (x < 0 || y < 0 || x > rect.width || y > rect.height) return;
 
-    // 서버 저장용 0~1
     const posX = rect.width === 0 ? 0 : x / rect.width;
     const posY = rect.height === 0 ? 0 : y / rect.height;
 
@@ -81,18 +123,19 @@ export default function LandingPage() {
       posX,
       posY,
       content: "",
+      color: pickRandomColor(),
     });
   };
 
   const submitDraft = async () => {
     if (!draft) return;
+
     const content = draft.content.trim();
     if (!content) {
       setDraft(null);
       return;
     }
 
-    // 서버 저장
     const created = await memoService.createMemo({
       boardId: BOARD_ID,
       contentText: content,
@@ -101,24 +144,24 @@ export default function LandingPage() {
       drawingImageUrl: "",
     });
 
-    // 즉시 반영(append) + 안내 문구 숨김 조건 충족
+    setColorOverrideMap((prev) => ({
+      ...prev,
+      [created.id]: draft.color,
+    }));
+
     setMemos((prev) => [created, ...prev]);
     setDraft(null);
   };
 
-  const boardStyle = useMemo(() => {
-    return "relative mx-auto px-50 py-10";
-  }, []);
+  const boardStyle = useMemo(() => "relative mx-auto px-50 py-10", []);
 
   return (
     <main className="text-gray-500">
-      {/* 보드 영역 */}
       <div
         ref={boardRef}
         onClick={onBoardClick}
         className={`${boardStyle} min-h-[calc(100vh-100px)]`}
       >
-        {/* ✅ 메모가 없을 때만: 기존 랜딩 UI 표시 */}
         {!hasAnyMemo && !draft && (
           <>
             <section className="flex items-center justify-between gap-12">
@@ -148,34 +191,38 @@ export default function LandingPage() {
           </>
         )}
 
-        {/* ✅ 서버 메모 렌더 */}
-        {memos.map((m) => (
-          <div
-            key={m.id}
-            className="absolute w-60 rounded-[14px] border border-gray-200 p-4 shadow-sm"
-            style={{
-              left: `calc(${m.posX * 100}% - 120px)`, // 중앙 정렬 느낌
-              top: `calc(${m.posY * 100}% - 40px)`,
-              backgroundColor: colorToBg(m.color),
-            }}
-            onClick={(e) => e.stopPropagation()} // 메모 클릭이 보드 클릭으로 번지지 않게
-          >
-            <div className="text-sm font-semibold text-gray-800 whitespace-pre-wrap wrap-break-word">
-              {m.contentText}
-            </div>
-            <div className="mt-2 text-[11px] font-medium text-gray-700/70">
-              #{m.id}
-            </div>
-          </div>
-        ))}
+        {memos.map((m) => {
+          const color = colorOverrideMap[m.id];
+          if (!color) return null;
 
-        {/* ✅ 입력용 임시 메모 */}
+          return (
+            <div
+              key={m.id}
+              className="absolute w-60 rounded-[14px] border border-gray-200 p-4 shadow-sm"
+              style={{
+                left: `calc(${m.posX * 100}% - 120px)`,
+                top: `calc(${m.posY * 100}% - 40px)`,
+                backgroundColor: colorToBg(color),
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="text-sm font-semibold text-gray-800 whitespace-pre-wrap wrap-break-word">
+                {m.contentText}
+              </div>
+              <div className="mt-2 text-[11px] font-medium text-gray-700/70">
+                {formatTimeAgoWithPlus9(m.createdAt)}
+              </div>
+            </div>
+          );
+        })}
+
         {draft && (
           <div
-            className="absolute w-[260px] rounded-[14px] border border-gray-200 bg-[#FDE68A] p-3 shadow-sm"
+            className="absolute w-[260px] rounded-[14px] border border-gray-200 p-3 shadow-sm"
             style={{
               left: Math.max(8, draft.x - 120),
               top: Math.max(8, draft.y - 20),
+              backgroundColor: colorToBg(draft.color),
             }}
             onClick={(e) => e.stopPropagation()}
           >
@@ -188,12 +235,10 @@ export default function LandingPage() {
                 )
               }
               onKeyDown={(e) => {
-                // Enter로 저장 (Shift+Enter는 줄바꿈)
                 if (e.key === "Enter" && !e.shiftKey) {
                   e.preventDefault();
                   submitDraft();
                 }
-                // ESC로 취소
                 if (e.key === "Escape") setDraft(null);
               }}
               placeholder="메모를 입력하고 Enter..."

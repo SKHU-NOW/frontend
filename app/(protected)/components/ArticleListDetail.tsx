@@ -33,8 +33,8 @@ type Props = {
   onToggleLike?: () => void;
   onSubmitComment?: (content: string) => void;
 
-  currentUserId: number; // ✅ 추가
-  onRefreshComments?: () => Promise<void> | void; // ✅ 추가
+  currentUserId: number;
+  onRefreshComments?: () => Promise<void> | void;
 };
 
 export default function ArticleListDetail({
@@ -94,7 +94,7 @@ export default function ArticleListDetail({
               className="flex items-center pt-2"
               aria-label="좋아요"
             >
-              <span className="inline-flex h-10 w-10 items-center justify-center rounded-full hover:bg-gray-50">
+              <span className="inline-flex h-10 w-10 items-center justify-center rounded-full">
                 {/* @ts-ignore */}
                 <Image src={heartIcon} alt="like" width={26} height={26} />
               </span>
@@ -123,15 +123,15 @@ export default function ArticleListDetail({
         {/* 이미지: content 바로 아래 */}
         {hasImage && (
           <div className="mt-4">
-            <div className="relative w-full overflow-hidden rounded-lg border border-gray-200">
+            <div className="w-full max-w-[220px] overflow-hidden">
               {/* 비율 유지용 래퍼 */}
-              <div className="relative aspect-square w-full">
+              <div className="relative h-[280px]">
                 <Image
                   src={article.imageUrl as string}
                   alt="게시글 이미지"
                   fill
-                  className="object-cover"
-                  sizes="(max-width: 1024px) 100vw, 700px"
+                  className="object-contain"
+                  sizes="(max-width: 1024px) 100vw, 420px"
                 />
               </div>
             </div>
