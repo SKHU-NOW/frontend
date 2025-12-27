@@ -4,7 +4,7 @@ type Props = {
   isOpen: boolean;
   onEdit?: () => void;
   onDelete?: () => void;
-  onReport?: () => void; // ✅ 추가
+  onReport?: () => void;
   onClose: () => void;
   variant?: "owner" | "other";
 };
@@ -23,18 +23,16 @@ export default function ArticleActionMenu({
 
   return (
     <>
-      {/* ✅ 바깥 클릭 시 닫기용 오버레이 (투명) */}
       <button
         type="button"
         aria-label="close menu overlay"
         onClick={(e) => {
-          e.stopPropagation(); // ✅ 카드 클릭 방지
+          e.stopPropagation();
           onClose();
         }}
         className="fixed inset-0 z-60 cursor-default bg-transparent"
       />
 
-      {/* ✅ 메뉴 본체 */}
       <div
         className="absolute z-70 right-[-72px] top-2"
         onClick={(e) => e.stopPropagation()}
