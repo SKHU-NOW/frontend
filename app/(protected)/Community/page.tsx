@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import Button from "@/app/components/ui/Button";
 import CreateCommunityModal from "../components/CreateCommunityModal";
 import { CommunityDto, communityService } from "@/app/lib/api/community";
+import { userService } from "@/app/lib/api/userService";
 
 export default function CommunityPage() {
   const [keyword, setKeyword] = useState("");
@@ -15,6 +16,8 @@ export default function CommunityPage() {
   const [rows, setRows] = useState<CommunityDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  const [myNickname, setMyNickname] = useState<string>("");
 
   const router = useRouter();
 
@@ -26,13 +29,31 @@ export default function CommunityPage() {
     const onDocMouseDown = (e: MouseEvent) => {
       const el = popoverRef.current;
       if (!el) return;
-      if (el.contains(e.target as Node)) return; // 내부 클릭은 유지
-      setOpen(false); // 외부 클릭은 닫기
+      if (el.contains(e.target as Node)) return;
+      setOpen(false);
     };
 
     document.addEventListener("mousedown", onDocMouseDown);
     return () => document.removeEventListener("mousedown", onDocMouseDown);
   }, [open]);
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const me = await userService.getMe();
+        if (!mounted) return;
+        setMyNickname(me.nickname ?? "");
+      } catch {
+        // 인증 실패 등일 수 있으니 일단 빈 값 유지
+        if (!mounted) return;
+        setMyNickname("");
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const fetchMyCommunities = useCallback(async () => {
     let mounted = true;
@@ -64,12 +85,21 @@ export default function CommunityPage() {
   }, [fetchMyCommunities]);
 
   const communities: Community[] = useMemo(() => {
-    return rows.map((c) => ({
-      id: String(c.id),
-      title: `${c.name} / ${c.year} - ${c.semester}학기`,
-      isStarred: !!c.communityMembershipResponse?.pinned,
-    }));
-  }, [rows]);
+    const myNick = (myNickname ?? "").trim();
+
+    return rows.map((c) => {
+      const adminNick = (c.adminNickname ?? "").trim();
+      const isCreator = !!myNick && adminNick === myNick;
+
+      return {
+        id: String(c.id),
+        title: `${c.name}`,
+        semester: ` ${c.year} - ${c.semester}학기`,
+        isStarred: !!c.communityMembershipResponse?.pinned,
+        isCreator,
+      };
+    });
+  }, [rows, myNickname]);
 
   const filtered = useMemo(() => {
     const q = keyword.trim();
@@ -82,13 +112,11 @@ export default function CommunityPage() {
       const communityId = Number(communityIdStr);
       if (!Number.isFinite(communityId)) return;
 
-      // 1) optimistic
       setRows((prev) =>
         prev.map((c) => {
           if (c.id !== communityId) return c;
           const prevPinned = !!c.communityMembershipResponse?.pinned;
 
-          // 멤버십이 없을 수도 있으니 안전하게 생성
           const nextMembership = {
             ...(c.communityMembershipResponse ?? {
               id: -1,
@@ -108,7 +136,6 @@ export default function CommunityPage() {
       );
 
       try {
-        // 2) 서버 토글 결과로 동기화(응답이 CommunityDto)
         const updated = await communityService.toggleCommunityPinned(
           communityId
         );
@@ -117,7 +144,6 @@ export default function CommunityPage() {
           prev.map((c) => (c.id === communityId ? updated : c))
         );
       } catch (e: any) {
-        // 3) 실패 시 롤백(가장 안전: 재조회)
         await fetchMyCommunities();
         alert(e?.message ?? "즐겨찾기 처리에 실패했습니다.");
       }
@@ -126,7 +152,7 @@ export default function CommunityPage() {
   );
 
   return (
-    <div className="mx-auto py-8 pl-40 pr-30">
+    <div className="mx-auto pb-15 pt-10 px-40">
       {/* 전체 패널(흰 박스) */}
       <div className="rounded-[10px] border border-gray-200 bg-white p-14 shadow-sm">
         {/* 상단: 검색 + 버튼 */}
@@ -161,7 +187,9 @@ export default function CommunityPage() {
 
         {/* 상태 표시 */}
         {loading && (
-          <div className="mt-6 text-sm text-gray-500">불러오는 중...</div>
+          <div className="mt-6 min-h-[200px] text-sm text-gray-500">
+            불러오는 중...
+          </div>
         )}
         {!loading && errorMsg && (
           <div className="mt-6 text-sm text-red-500">{errorMsg}</div>

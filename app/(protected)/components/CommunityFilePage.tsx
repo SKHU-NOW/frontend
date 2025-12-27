@@ -14,6 +14,9 @@ export default function CommunityFilePage({
   const currentUserId: number = Number.isFinite(user?.id)
     ? Number(user.id)
     : -1;
+  const currentUserMileage: number = Number.isFinite(user?.mileage)
+    ? Number(user.mileage)
+    : 0;
 
   const [items, setItems] = useState<CommunityResourceDto[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -43,6 +46,7 @@ export default function CommunityFilePage({
     <FileList
       communityId={communityId}
       currentUserId={currentUserId}
+      currentUserMileage={currentUserMileage}
       items={items}
       isLoading={isLoading}
       errorMsg={errorMsg}

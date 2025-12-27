@@ -40,7 +40,6 @@ export default function ResourceUploadModal({
     try {
       setIsUploading(true);
       await onSubmit({ title: title.trim(), file });
-      // 성공 시: 닫기 + 상태 초기화
       setTitle("");
       setFile(null);
       onClose();
@@ -58,7 +57,6 @@ export default function ResourceUploadModal({
 
   return (
     <div className="fixed inset-0 z-1000">
-      {/* overlay (그림자 + 모자이크) */}
       <button
         type="button"
         onClick={handleClose}
@@ -116,6 +114,10 @@ export default function ResourceUploadModal({
                 />
               </div>
             </div>
+
+            <p className="pt-2 text-sm font-semibold text-gray-600">
+              업로드 시 마일리지 10 지급, 다른 유저가 다운로드 시 20 지급됩니다.
+            </p>
           </div>
 
           {/* buttons */}

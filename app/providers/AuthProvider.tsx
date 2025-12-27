@@ -46,14 +46,10 @@ export default function AuthProvider({
   const isAuthenticated = !!user;
 
   const refreshMe = async () => {
-    // accessToken이 유효하면 /auth/me 성공
-    // 만료면 fetchClient가 401 -> refresh -> 재시도까지 알아서 함
     const me = await userService.getMe();
     setUser(me);
   };
 
-  // 초기 진입 시: accessToken 있으면 로그인 상태로 보고,
-  // 없으면 refreshToken 있으면 refresh 시도해서 복구
   useEffect(() => {
     const boot = async () => {
       try {
@@ -63,7 +59,6 @@ export default function AuthProvider({
           return;
         }
 
-        // 2) refreshToken 있으면 refresh 시도
         const refresh = getRefreshToken();
         if (refresh) {
           const tokens = await api.post<{
@@ -75,7 +70,6 @@ export default function AuthProvider({
           return;
         }
 
-        // 3) 둘 다 없으면 비로그인
         setUser(null);
       } catch (e) {
         clearTokens();

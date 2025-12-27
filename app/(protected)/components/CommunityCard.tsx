@@ -2,12 +2,15 @@
 
 import Image from "next/image";
 import starEmpty from "../../assets/star_empty.svg";
-import starFull from "../../assets/star_blue.svg";
+import starFull from "../../assets/star_full.svg";
+import starBlue from "../../assets/star_blue.svg";
 
 export type Community = {
   id: string;
   title: string; // 예: "영어단어외2:알맹이와 껍데기 / 2025 - 2학기 / 전공선택"
+  semester: string;
   isStarred?: boolean;
+  isCreator?: boolean;
 };
 
 type Props = {
@@ -22,7 +25,11 @@ export default function CommunityCard({
   onClick,
   onToggleStar,
 }: Props) {
-  const icon = community.isStarred ? starFull : starEmpty;
+  const icon = !community.isStarred
+    ? starEmpty
+    : community.isCreator
+    ? starFull
+    : starBlue;
 
   return (
     <div
@@ -30,9 +37,10 @@ export default function CommunityCard({
       className="flex items-center justify-between rounded-md border border-gray-500 bg-white
                  pl-4 pr-2 py-1.5 cursor-pointer hover:bg-gray-50 transition-colors"
     >
-      <p className="text-[15px] font-semibold text-gray-900">
-        {community.title}
-      </p>
+      <div className="font-semibold text-gray-900">
+        <div className="text-[16px]">{community.title}</div>
+        <div className="text-[13px]">{community.semester}</div>
+      </div>
 
       <button
         type="button"
@@ -41,7 +49,6 @@ export default function CommunityCard({
           onToggleStar?.();
         }}
         className="flex h-9 w-9 items-center justify-center rounded-md"
-        aria-label="즐겨찾기"
       >
         <Image src={icon} alt="즐겨찾기" width={18} height={18} />
       </button>

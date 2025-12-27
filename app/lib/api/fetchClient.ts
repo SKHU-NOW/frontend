@@ -49,16 +49,13 @@ async function refreshTokens(): Promise<Tokens> {
   const refreshToken = getRefreshToken();
   if (!refreshToken) throw new Error("No refreshToken");
 
-  // 서버 스펙: POST /auth/refresh { refreshToken }
   const res = await fetch(`${API_BASE}/auth/refresh`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    // refresh는 accessToken 없이도 동작하는 설계가 흔함 (서버 정책에 따라 다름)
     body: JSON.stringify({ refreshToken }),
-    credentials: "include", // 혹시 서버가 세션/쿠키도 섞어쓴다면 안전
+    credentials: "include",
   });
 
-  // 서버가 302 리다이렉트로 로그인으로 보내는 경우도 있어서 처리:
   if (res.redirected) {
     throw new Error("Refresh redirected to login");
   }
@@ -72,12 +69,10 @@ async function refreshTokens(): Promise<Tokens> {
     throw new Error("Invalid refresh response");
   }
 
-  // ✅ refresh 끝났는데 그 사이 로그아웃이 발생했으면 토큰 세팅 금지
   if (logoutNonce !== nonceAtStart) {
     throw new Error("Refresh ignored: logged out");
   }
 
-  // ✅ 혹시 refreshToken이 중간에 사라졌으면(로그아웃) 토큰 세팅 금지
   if (!getRefreshToken()) {
     throw new Error("Refresh ignored: refreshToken cleared");
   }
@@ -116,7 +111,7 @@ async function parseJsonSafe(res: Response) {
   try {
     return JSON.parse(text);
   } catch {
-    return text; // 혹시 JSON 아닌 문자열일 수도 있어서
+    return text;
   }
 }
 
@@ -150,9 +145,7 @@ async function request<T>(
 
   const res = await doFetch(accessToken);
 
-  // 302(리다이렉트)로 로그인 보내는 서버라면, fetch는 redirected로 표시될 수 있음
   if (res.redirected) {
-    // 여기서는 "인증 필요"로 간주
     throw new Error("Redirected (likely unauthenticated)");
   }
 
@@ -179,7 +172,7 @@ async function request<T>(
         if (!parsed.success) throw new Error(parsed.message ?? "API failed");
         return parsed.data;
       }
-      return parsed as T; // raw 응답 지원
+      return parsed as T;
     } catch (e) {
       clearTokens();
       throw e;
@@ -197,7 +190,6 @@ async function request<T>(
 
   const parsed = await parseJsonSafe(res);
 
-  // Envelope면 data 반환 / 아니면 raw 그대로 반환
   if (isEnvelope<T>(parsed)) {
     if (!parsed.success) throw new Error(parsed.message ?? "API failed");
     return parsed.data;

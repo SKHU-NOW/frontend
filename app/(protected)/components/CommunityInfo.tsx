@@ -6,16 +6,19 @@ import Image from "next/image";
 import { useState } from "react";
 
 import starEmpty from "@/app/assets/star_empty.svg";
-import starFull from "@/app/assets/star_blue.svg";
+import starFull from "@/app/assets/star_full.svg";
+import starBlue from "@/app/assets/star_blue.svg";
 
 type Props = {
-  communityId: number; // ✅ 추가
+  communityId: number;
   title: string;
   term: string;
   manager: string;
   isStarred: boolean;
   onToggleStar?: () => void;
-  onDeleted?: () => void; // ✅ 추가 (삭제 후 라우팅 등)
+  onDeleted?: () => void;
+  adminNickname?: string;
+  myNickname?: string;
 };
 
 export default function CommunityInfoCard({
@@ -26,6 +29,8 @@ export default function CommunityInfoCard({
   isStarred,
   onToggleStar,
   onDeleted,
+  adminNickname = "",
+  myNickname = "",
 }: Props) {
   const [isDeleting, setIsDeleting] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -46,7 +51,10 @@ export default function CommunityInfoCard({
     }
   };
 
-  const icon = isStarred ? starFull : starEmpty;
+  const isCreator =
+    !!adminNickname && !!myNickname && adminNickname === myNickname;
+
+  const icon = !isStarred ? starEmpty : isCreator ? starFull : starBlue;
 
   return (
     <div className="relative rounded-xl border border-gray-200 bg-white p-8 shadow-sm">
@@ -75,7 +83,6 @@ export default function CommunityInfoCard({
         </button>
       </div>
 
-      {/* ✅ 확인 모달 */}
       <ConfirmModal
         isOpen={confirmOpen}
         message="커뮤니티를 삭제하겠습니까?"

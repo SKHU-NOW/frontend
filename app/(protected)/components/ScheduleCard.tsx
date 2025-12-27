@@ -336,16 +336,14 @@ export default function ScheduleCard({ communityId }: Props) {
             <button
               type="button"
               onClick={() => setViewDate((d) => addMonths(d, -1))}
-              className="h-8 w-8 rounded-md border border-gray-200 text-gray-600 hover:bg-gray-50"
-              aria-label="이전 달"
+              className="h-8 w-8 rounded-2xl border border-gray-200 text-gray-600 hover:bg-secondary-500 hover:text-white hover:border-none"
             >
               ‹
             </button>
             <button
               type="button"
               onClick={() => setViewDate((d) => addMonths(d, 1))}
-              className="h-8 w-8 rounded-md border border-gray-200 text-gray-600 hover:bg-gray-50"
-              aria-label="다음 달"
+              className="h-8 w-8 rounded-2xl border border-gray-200 text-gray-600 hover:bg-secondary-500 hover:text-white hover:border-none"
             >
               ›
             </button>
@@ -399,7 +397,6 @@ export default function ScheduleCard({ communityId }: Props) {
                 type="button"
                 onClick={() => onSelectDate(date)}
                 className="flex items-center justify-center"
-                aria-label={toKey(date)}
               >
                 <div className="flex flex-col items-center justify-center">
                   <div
@@ -414,7 +411,7 @@ export default function ScheduleCard({ communityId }: Props) {
                     {date.getDate()}
                   </div>
 
-                  <div className="h-2 mt-0.5 flex items-center justify-center">
+                  <div className="h-1.5 mt-0.5 flex items-center justify-center">
                     {showDot && (
                       <span className="inline-block h-1.5 w-1.5 rounded-full bg-red-500" />
                     )}

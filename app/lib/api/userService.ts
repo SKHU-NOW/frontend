@@ -1,4 +1,3 @@
-// lib/api/userService.ts
 import { api } from "./fetchClient";
 
 export type AuthProviderType = "MICROSOFT" | "LOCAL" | string;

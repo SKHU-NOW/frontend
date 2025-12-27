@@ -21,17 +21,16 @@ export type CommunityPostDto = {
 
 export type CreateCommunityPostPayload = {
   title: string;
-  content?: string; // swagger에서 optional처럼 보여서 optional 처리
+  content?: string;
   category: CommunityPostCategory;
-  multipartFile?: File | null; // swagger 필드명 기준
-  // communityId는 path로도 가지만, swagger에 body required로 보여서 FormData에도 같이 넣어줌
+  multipartFile?: File | null;
 };
 
 export type UpdateCommunityPostPayload = {
   title: string;
   content?: string;
   category: CommunityPostCategory;
-  multipartFile?: File | null; // 새 파일로 교체하는 케이스
+  multipartFile?: File | null;
 };
 
 export const articleService = {
@@ -53,7 +52,7 @@ export const articleService = {
 
   uploadImage: (file: File) => {
     const formData = new FormData();
-    formData.append("file", file); // ✅ swagger 기준 key: file
+    formData.append("file", file);
     return api.post<string>("/upload", formData, { auth: true });
   },
 
@@ -66,7 +65,6 @@ export const articleService = {
     formData.append("title", payload.title);
     if (payload.content != null) formData.append("content", payload.content);
 
-    // ✅ swagger에 communityId가 body required로 떠서 같이 넣어줌 (path + body 둘 다)
     formData.append("communityId", String(communityId));
 
     formData.append("category", payload.category);

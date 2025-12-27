@@ -4,6 +4,8 @@ import userIcon from "../assets/profile.svg";
 import menuIcon from "../assets/commulist.svg";
 import ProtectedGate from "./components/ProtectedGate";
 import HeaderShell from "./components/HeaderShell";
+import userIconActive from "../assets/profile_active.svg";
+import menuIconActive from "../assets/commulist_active.svg";
 
 export default function ProtectedLayout({
   children,
@@ -11,22 +13,33 @@ export default function ProtectedLayout({
   children: React.ReactNode;
 }) {
   const items = [
-    { type: "profile", label: "프로필", iconSrc: userIcon },
-    { type: "link", href: "/Community", label: "커뮤니티", iconSrc: menuIcon },
+    {
+      type: "profile",
+      label: "프로필",
+      iconSrc: userIcon,
+      activeIconSrc: userIconActive,
+    },
+    {
+      type: "link",
+      href: "/Community",
+      label: "커뮤니티",
+      iconSrc: menuIcon,
+      activeIconSrc: menuIconActive,
+    },
   ] satisfies SidebarItem[];
 
   return (
     <ProtectedGate>
-      <div className="min-h-screen">
+      <div className="h-screen overflow-hidden">
         <HeaderShell />
-        <div className="flex w-full">
-          <Sidebar items={items} className="sticky h-[calc(100vh=10px)]" />
+        <Sidebar items={items} />
 
-          <main className="flex-1 min-h-screen">
-            <div className="">{children}</div>
+        <div className="pl-20 pt-20 h-full">
+          <main className="h-[calc(100vh-80px)] overflow-y-auto">
+            <div>{children}</div>
+            <Footer />
           </main>
         </div>
-        <Footer />
       </div>
     </ProtectedGate>
   );

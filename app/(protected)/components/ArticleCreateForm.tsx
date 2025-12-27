@@ -6,7 +6,6 @@ import Image from "next/image";
 import Field from "@/app/components/ui/Field";
 import ButtonBlue from "@/app/components/ui/ButtonBlue";
 import ArticleCategoryTabs from "@/app/(protected)/components/ArticleCategoryTabs";
-import type { PostCategory } from "@/app/(protected)/types/article";
 
 import uploadIcon from "../../assets/upload.svg";
 import {
@@ -18,13 +17,13 @@ import {
 type Props = {
   communityId: number;
 
-  mode: "create" | "edit"; // ✅ 추가
-  postId?: number; // ✅ edit일 때 필요
+  mode: "create" | "edit";
+  postId?: number;
 
   initialCategory?: CommunityPostCategory;
   onCancel: () => void;
 
-  onSaved: (saved: CommunityPostDto) => void; // ✅ create/edit 공통 콜백
+  onSaved: (saved: CommunityPostDto) => void;
 };
 
 export default function ArticleCreateForm({
@@ -40,7 +39,6 @@ export default function ArticleCreateForm({
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
 
-  // ✅ swagger가 multipartFile "단일"이라 1개만 보관
   const [file, setFile] = useState<File | null>(null);
   const [existingImageUrl, setExistingImageUrl] = useState<string | null>(null);
 
@@ -50,7 +48,6 @@ export default function ArticleCreateForm({
 
   const fileRef = useRef<HTMLInputElement | null>(null);
 
-  // edit 모드면 기존 게시글 불러오기
   useEffect(() => {
     if (mode !== "edit") return;
     if (!Number.isFinite(communityId)) return;
@@ -98,7 +95,7 @@ export default function ArticleCreateForm({
 
   const onPickFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const picked = e.target.files?.[0] ?? null;
-    e.target.value = ""; // 같은 파일 다시 선택 가능하게
+    e.target.value = "";
     if (!picked) return;
 
     setFile(picked);
@@ -118,7 +115,7 @@ export default function ArticleCreateForm({
         title: title.trim(),
         content: content.trim(),
         category,
-        multipartFile: file ?? null, // ✅ 여기로 File 그대로
+        multipartFile: file ?? null,
       };
 
       const saved =
